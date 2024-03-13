@@ -11,7 +11,7 @@
 #include <fcntl.h>
 
 // thermal camera
-#include "small_thermal/guideusbcamera.h"
+#include "guideusbcamera.h"
 
 // ros2 
 #include "rclcpp/rclcpp.hpp"
@@ -22,7 +22,7 @@
 
 int main(void) {
 
-    guide_usb_setloglevel(LOG_TEST);
+    // guide_usb_setloglevel(LOG_TEST);
     int ret = guide_usb_initial("/dev/video0");
     if(ret < 0)
     {
