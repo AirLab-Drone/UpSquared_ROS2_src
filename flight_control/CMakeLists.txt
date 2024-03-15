@@ -10,9 +10,10 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
-# find_package(<dependency> REQUIRED)
+# find_package(<dependency> REQUIRED)`
 
 # Include Cpp "include" directory
 include_directories(include)
@@ -32,14 +33,20 @@ ament_python_install_package(${PROJECT_NAME})
 
 # Install Python executables
 install(PROGRAMS
-  scripts/py_node.py
-  scripts/tool/tool.py
+  # scripts/py_node.py
+  # scripts/tool/tool.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY
-  launch
-  DESTINATION share/${PROJECT_NAME}/
+launch
+DESTINATION share/${PROJECT_NAME}/
+)
+
+# generate srv and msg
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/Trigger.srv"
 )
 
 if(BUILD_TESTING)
