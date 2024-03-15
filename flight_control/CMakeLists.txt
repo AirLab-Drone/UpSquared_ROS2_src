@@ -10,7 +10,17 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
+find_package(aruco_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+set(THIS_PACKAGE_INCLUDE_DEPENDS
+  aruco_msgs
+)
+foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
+  find_package(${Dependency} REQUIRED)
+endforeach()
+
+
+
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)`
@@ -28,26 +38,25 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# Install Python modules
-ament_python_install_package(${PROJECT_NAME})
 
+# Install Python modules
+ament_python_install_package(${PROJECT_NAME}_py)
 # Install Python executables
 install(PROGRAMS
-  # scripts/py_node.py
-  # scripts/tool/tool.py
+  scripts/aruco_detector_node.py
+  scripts/client.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY
-launch
-DESTINATION share/${PROJECT_NAME}/
+  launch
+  DESTINATION share/${PROJECT_NAME}
 )
-
-# generate srv and msg
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "srv/Trigger.srv"
-)
+  "srv/GetCloestAruco.srv"
+  DEPENDENCIES aruco_msgs
+ )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

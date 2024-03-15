@@ -1,3 +1,10 @@
+from aruco_msgs.msg import Marker
+from geometry_msgs.msg import PoseWithCovariance, Point, Quaternion
+import numpy as np
+import cv2
+import math
+import rclpy
+
 class LimitedList:
     def __init__(self, initial_size=20):
         self.items = []
@@ -105,6 +112,25 @@ class Aruco:
         roll = self.roll_list.calculate_median()
         return x, y, z, yaw, pitch, roll
 
+    def getCoordinateWithMarkerMsg(self):
+        x, y, z, yaw, pitch, roll = self.getCoordinate()
+        if x == None or y == None or z == None or yaw == None or pitch == None or roll == None:
+            return Marker()
+        marker = Marker()
+        marker.header.frame_id = "aruco"
+        marker.header.stamp = rclpy.clock.Clock().now().to_msg()
+        marker.id = int(self.id)
+        marker.pose = PoseWithCovariance()
+        marker.pose.pose.position = Point(x=x, y=y, z=z)
+        # roll, pitch, yaw to quaternion
+        roll = math.radians(roll)
+        pitch = math.radians(pitch)
+        yaw = math.radians(yaw)
+        w = math.cos(roll / 2) * math.cos(pitch / 2) * math.cos(yaw / 2) + math.sin(roll / 2) * math.sin(pitch / 2) * math.sin(yaw / 2) # noqa
+        marker.pose.pose.orientation = Quaternion(x=float(roll), y=float(pitch), z=float(yaw), w=float(w))
+
+        return marker
+
     def checkStd(self):
         x_std = self.x_list.calculate_std()
         y_std = self.y_list.calculate_std()
@@ -136,3 +162,5 @@ class Aruco:
         )
         return frame
 
+    def is_empty(self):
+        return len(self.x_list.items) == 0
