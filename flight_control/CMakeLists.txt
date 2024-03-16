@@ -44,6 +44,7 @@ ament_python_install_package(${PROJECT_NAME}_py)
 # Install Python executables
 install(PROGRAMS
   scripts/aruco_detector_node.py
+  scripts/main_flight_node.py
   scripts/client.py
   DESTINATION lib/${PROJECT_NAME}
 )

@@ -7,7 +7,7 @@ from flight_control.srv import GetCloestAruco
 class Client(Node):
     def __init__(self):
         super().__init__('client')
-        self.cli = self.create_client(GetCloestAruco, 'test')
+        self.cli = self.create_client(GetCloestAruco, 'get_cloest_aruco')
         while not self.cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
         self.req = GetCloestAruco.Request()
@@ -20,9 +20,14 @@ class Client(Node):
         return self.future.result()
 
 def main(args=None):
-    rclpy.init(args=args)
+    if(not rclpy.ok()):
+        rclpy.init()
+    start_time = rclpy.clock.Clock().now()
     client = Client()
-    client.send_request()
+    for i in range(1):
+        result = client.send_request()
+    print(f'during time: {(rclpy.clock.Clock().now() - start_time).nanoseconds/1e9}s')
+    print(f'cloest aruco: {result.aruco}')
     client.destroy_node()
     rclpy.shutdown()
 

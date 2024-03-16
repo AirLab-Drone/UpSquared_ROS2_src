@@ -1,3 +1,7 @@
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Range
+
 class FlightInfo:
     """
     Class representing flight information.
@@ -20,7 +24,6 @@ class FlightInfo:
         """
         Callback function for the rangefinder subscription.
         """
-        print(f'rangefinder callback: {msg.range}')
         self.rangefinder_alt = msg.range
 
     def destroy(self):

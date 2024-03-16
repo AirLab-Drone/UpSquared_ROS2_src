@@ -5,8 +5,17 @@ import cv2
 from rclpy.node import Node
 import rclpy
 from flight_control_py.aruco_visual.aruco import Aruco
+from flight_control_py.tool import video_capture_from_ros2
 from aruco_msgs.msg import Marker, MarkerArray
 from flight_control.srv import GetCloestAruco
+
+from aruco_msgs.msg import Marker
+from geometry_msgs.msg import PoseWithCovariance, Point, Quaternion
+import numpy as np
+import cv2
+import math
+import rclpy
+
 
 class ArucoDetector(Node):
     # #-----------------setting-----------------
@@ -16,7 +25,7 @@ class ArucoDetector(Node):
     # DRAWARUCO = True
     is_running = True
 
-    def __init__(self, video_source=cv2.VideoCapture(0)):
+    def __init__(self, video_source):
         super().__init__("aruco_detector")
         self.cap = video_source
         self.arucoList = []
@@ -24,25 +33,23 @@ class ArucoDetector(Node):
         self.start_time = self.get_clock().now()
         timer_period = 0.1  # seconds
         # ---------------------------------- service --------------------------------- #
-        # self.srv_cloest_aruco = self.create_service(
-        #     GetCloestAruco, "get_cloest_aruco", self.get_cloest_aruco_callback
-        # )
-        self.srv_test = self.create_service(
-            GetCloestAruco, "test", self.test_callback
+        self.srv_cloest_aruco = self.create_service(
+            GetCloestAruco, "get_cloest_aruco", self.get_cloest_aruco_callback
         )
+        # -------------------------------- publishers -------------------------------- #
+        self.aruco_publisher = self.create_publisher(MarkerArray, "aruco_markers", 10)
+        self.cloest_aruco_publisher = self.create_publisher(Marker, "cloest_aruco", 10)
         # ------------------------------- start detect ------------------------------- #
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_50)
         aruco_params = cv2.aruco.DetectorParameters()
         self.detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
-        self.timer = self.create_timer(timer_period, self.run)
-        self.aruco_publisher = self.create_publisher(MarkerArray, "aruco_markers", 10)
-    def test_callback(self, request, response):
-        print("test")
-        return response
+        self.create_timer(timer_period, self.run)
 
     def run(self):
         while self.is_running:
             ret, self.frame = self.cap.read()
+            if not ret:
+                continue
             # -----------------find aruco-----------------
             if self.frame is None:
                 continue
@@ -59,13 +66,12 @@ class ArucoDetector(Node):
                 if aruco.checkInList(ids) and len(corners) > 0:
                     id = aruco.id
                     aruco.update(id, corners[np.where(ids == aruco.id)[0][0]])
-                if(not aruco.is_empty()):
+                if not aruco.is_empty():
                     marker_array_temp.markers.append(aruco.getCoordinateWithMarkerMsg())
             # print(marker_array_temp.markers)
             marker_array_temp.header.frame_id = "aruco_list"
             marker_array_temp.header.stamp = rclpy.clock.Clock().now().to_msg()
             self.aruco_publisher.publish(marker_array_temp)
-                
 
     def stop(self):
         self.is_running = False
@@ -87,8 +93,7 @@ class ArucoDetector(Node):
             print(len(self.arucoList[0].x_list.items))
 
     def get_cloest_aruco_callback(self, request, response):
-        print("Incoming request")
-        return response
+        response.valid = False
         closest_aruco = None
         for aruco in self.arucoList:
             id = aruco.id
@@ -122,7 +127,13 @@ class ArucoDetector(Node):
                 if aruco_distance < closest_aruco_distance:
                     closest_aruco = aruco
         if closest_aruco == None:
+            response.valid = False
+            response.aruco = Marker()
+            print("i can't see aruco")
             return response
+        else:
+            response.valid = True
+            print("i can see aruco")
         response.aruco = closest_aruco.getCoordinateWithMarkerMsg()
         print(response.aruco)
         return response
@@ -145,8 +156,18 @@ class ArucoDetector(Node):
 
 
 def main():
-    rclpy.init()
-    aruco_detector = ArucoDetector()
+    if not rclpy.ok():
+        rclpy.init()
+    aruco_detector = ArucoDetector(
+        video_source=video_capture_from_ros2.VideoCaptureFromRos2(
+            # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
+            "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
+        )
+    )
+    # aruco_detector.cap = video_capture_from_ros2.VideoCaptureFromRos2(
+    #     # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
+    #     "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
+    # )
     rclpy.spin(aruco_detector)
     aruco_detector.destroy_node()
     rclpy.shutdown()

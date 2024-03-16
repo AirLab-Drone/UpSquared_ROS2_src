@@ -1,11 +1,11 @@
 import math
-import time
 import rclpy
-from visual import ArucoDetector
-from flight_control import FlightControl, FlightInfo
-from tool.PID import PID
-import threading
-from tool.video_capture_from_ros2 import VideoCaptureFromRos2
+from rclpy.node import Node
+from flight_control_py.tool.PID import PID
+from flight_control_py.flight.base_control import BaseControl as FlightControl
+from flight_control_py.flight.flight_controller_info import FlightInfo
+from flight_control_py.aruco_visual.aruco import Aruco
+from flight_control.srv import GetCloestAruco
 
 
 class Mission:
@@ -13,9 +13,12 @@ class Mission:
     包含都個任務的class，用於導航，降落等功能
     """
 
-    def __init__(self, controller: FlightControl, flight_info: FlightInfo) -> None:
+    def __init__(self, controller: FlightControl, flight_info: FlightInfo, node: Node) -> None:
         self.controller = controller
         self.flight_info = flight_info
+        self.node = node
+        self.getCloestArucoClient = self.node.create_client(GetCloestAruco, 'get_cloest_aruco')
+            
 
     def landedOnPlatform(self):
         """
@@ -35,12 +38,6 @@ class Mission:
         max_speed = 0.5  # 速度 單位:公尺/秒
         max_yaw = 5*3.14/180  # 5度
         downward_distance = -0.2  # the distance to move down
-        aruco_detector = ArucoDetector(
-            video_source=VideoCaptureFromRos2(
-                "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image",
-                node=self.controller.node,
-            )
-        )  # 0 for webcam, 1 for ros image
         count = 0  # count of no aruco
         max_count = 200  # max count of no aruco
         pid_x = PID(
@@ -55,7 +52,12 @@ class Mission:
         while True:
             # rclpy.spin_once(self.flight_info.node)
             # ----------------------- get downward aruco coordinate ---------------------- #
-            closest_aruco = aruco_detector.closestAruco()
+            get_cloest_aruco_future = self.getCloestArucoClient.call_async(GetCloestAruco.Request())
+            rclpy.spin_until_future_complete(self.node, get_cloest_aruco_future)
+            closest_aruco = None
+            if get_cloest_aruco_future.result().valid:
+                closest_aruco = Aruco().fromMsgMarker2Aruco(get_cloest_aruco_future.result().aruco)
+
             if closest_aruco is None:
                 count += 1
                 if count > max_count:
@@ -81,26 +83,16 @@ class Mission:
             move_y = -pid_y.PID(
                 y, self.controller.node.get_clock().now().nanoseconds * 1e-9
             )
-            print(f'yaw: {yaw}')
             move_yaw = -pid_yaw.PID(
                 yaw, self.controller.node.get_clock().now().nanoseconds * 1e-9
             )
-            print(f'move_yaw0: {move_yaw}')
-            # print(f"move_x:{(move_x)}, move_y:{type(move_y)}, move_yaw:{type(move_yaw)} ")
-            # print(f"move_x:{(move_x)}, move_y:{move_y}, move_yaw:{(move_yaw)}  ")
-            # print(f"move_pid_x:{move_pid_x}, move_pid_y:{move_pid_y}")
 
             diffrent_distance = math.sqrt(x**2 + y**2)
             # -------------------------- limit move_x and move_y and move_yaw------------------------- #
             move_x = min(max(x, -max_speed), max_speed)
             move_y = min(max(y, -max_speed), max_speed)
-            print(f'move_yaw1: {move_yaw}')
             move_yaw = min(max(move_yaw * 3.14159 / 180, -max_yaw), max_yaw)
-            print(f'move_yaw2: {move_yaw}')
             # ----------------------------- send velocity command ----------------------------- #
-            # move_x = 0
-            # move_y = 0
-
             if (
                 diffrent_distance < 0.03
                 and self.flight_info.rangefinder_alt <= lowest_high
