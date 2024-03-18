@@ -40,6 +40,7 @@ class BaseControl:
         @param yaw_rate:CANNOT WORKING, yaw rate in rad/s, positive for clockwise, negative for counterclockwise
         傳送x,y,z軸的速度給飛控，單位為m/s。
         """
+        self.msg = self.setInitPositionTarget()
         self.msg.velocity.x = float(x)
         self.msg.velocity.y = float(y)
         self.msg.velocity.z = float(z)
@@ -57,6 +58,7 @@ class BaseControl:
         @param yaw: yaw in rad, positive for counterclockwise, negative for clockwise
         傳送x,y,z軸的位置給飛控，單位為m。
         """
+        self.msg = self.setInitPositionTarget()
         self.msg.position.x = float(x)
         self.msg.position.y = float(y)
         self.msg.position.z = float(z)
@@ -106,6 +108,10 @@ class BaseControl:
         return True
 
     def setMode(self, mode: str = "4"):
+        """
+        @parm mode: flight mode, 4 for guided
+        設定飛行模式。
+        """
         set_mode_client = self.node.create_client(SetMode, "/mavros/set_mode")
         set_mode_request = SetMode.Request(base_mode=0, custom_mode=mode)
         future_set_mode = set_mode_client.call_async(set_mode_request)
@@ -169,11 +175,16 @@ class BaseControl:
 if __name__ == "__main__":
     rclpy.init()
     node_main = rclpy.create_node("flight_control_test")
-    controler = FlightControl(node_main)
+    controler = BaseControl(node_main)
     while not controler.armAndTakeoff(alt=2):
         print("armAndTakeoff fail")
     time.sleep(5)
+    print('turn 90 degree')
     controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
+    time.sleep(15)
+    print('turn 90 degree')
     controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
-    controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
-    controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
+    time.sleep(15)
+    # controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
+    # controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
+    controler.land()

@@ -20,26 +20,10 @@ class MainFlightNode(Node):
         time.sleep(5)
 
     def velocityTest(self):
-        rclpy.init()
-        node = rclpy.create_node("flight_control")
-        flightController = flight_control.FlightControl(node)
+        while not self.controller.armAndTakeoff(alt=2):
+            print("armAndTakeoff fail")
         time.sleep(5)
-        isTakeoffSuccess = False
-        while isTakeoffSuccess == False:
-            isTakeoffSuccess = flightController.armAndTakeoff()
-        # flightController.simpleFlight(1.0, 0.0, 0.0, 5)
-        # wait(flightController)
-        flightController.simpleFlight(-1.0, 0.0, 0.0, 5)
-        wait(flightController)
-        # flightController.simpleFlight(0.0, 0.5, 0.0, 5)
-        # wait(flightController)
-        # flightController.simpleFlight(0.0, -0.5, 0.0, 5)
-        # wait(flightController)
-        isLandSuccess = False
-        while isLandSuccess == False:
-            isLandSuccess = flightController.land()
-        flightController.destroy()
-
+        
     def arucoLandingTest(self):
         while not self.controller.armAndTakeoff(alt=2):
             print("armAndTakeoff fail")
