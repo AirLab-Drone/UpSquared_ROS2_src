@@ -41,7 +41,7 @@ class Mission:
         # --------------------------------- variable --------------------------------- #
         lowest_high = 0.7  # 最低可看到aruco的高度 單位:公尺
         max_speed = 0.5  # 速度 單位:公尺/秒
-        max_yaw = 5*3.14/180  # 5度
+        max_yaw = 5  # 5度
         downward_distance = -0.2  # the distance to move down
         pid_x = PID(
             0.5, 0.25, 0, 0, time=self.controller.node.get_clock().now().nanoseconds * 1e-9
@@ -72,7 +72,7 @@ class Mission:
                     last_moveup_time = rclpy.clock.Clock().now()
                 # self.controller.setZeroVelocity()
                 continue
-            print(f"closest_aruco:{closest_aruco}")
+            last_moveup_time = rclpy.clock.Clock().now()
             # -------------------------------- PID control ------------------------------- #
             move_x = -pid_x.PID(
                 x, self.controller.node.get_clock().now().nanoseconds * 1e-9
@@ -82,13 +82,13 @@ class Mission:
             )
             move_yaw = -pid_yaw.PID(
                 yaw, self.controller.node.get_clock().now().nanoseconds * 1e-9
-            )
+            ) # convert to radians
 
             diffrent_distance = math.sqrt(x**2 + y**2)
             # -------------------------- limit move_x and move_y and move_yaw------------------------- #
             move_x = min(max(x, -max_speed), max_speed)
             move_y = min(max(y, -max_speed), max_speed)
-            move_yaw = min(max(move_yaw * 3.14159 / 180, -max_yaw), max_yaw)
+            move_yaw = min(max(move_yaw , -max_yaw), max_yaw)
             # ----------------------------- send velocity command ----------------------------- #
             if (
                 diffrent_distance < 0.03
@@ -98,7 +98,7 @@ class Mission:
                 self.controller.setZeroVelocity()
                 print(f'landing high:{self.flight_info.rangefinder_alt}')
                 break
-            self.controller.sendPositionTargetPosition(0, 0, 0, yaw= -move_yaw)
+            self.controller.sendPositionTargetVelocity(0, 0, 0, yaw_rate= -move_yaw)
             if self.flight_info.rangefinder_alt > lowest_high:
                 self.controller.sendPositionTargetVelocity(
                     -move_y,

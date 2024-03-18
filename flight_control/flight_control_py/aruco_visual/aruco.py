@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import math
 import rclpy
+from scipy.spatial.transform import Rotation
 
 
 class LimitedList:
@@ -78,7 +79,8 @@ class Aruco:
 
     def estimatePoseSingleMarkers(self, corner):
         rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(
-            corner, self.markerLength, self.mtx, self.dist)
+            corner, self.markerLength, self.mtx, self.dist
+        )
         self.rvec = rvec
         self.tvec = tvec
         yaw, pitch, roll = self.rvec_to_euler_angles(rvec)
@@ -115,20 +117,25 @@ class Aruco:
 
     def getCoordinateWithMarkerMsg(self):
         x, y, z, yaw, pitch, roll = self.getCoordinate()
-        if x == None or y == None or z == None or yaw == None or pitch == None or roll == None:
+        if (
+            x == None
+            or y == None
+            or z == None
+            or yaw == None
+            or pitch == None
+            or roll == None
+        ):
             return Marker()
         marker = Marker()
         marker.header.frame_id = "aruco"
         marker.header.stamp = rclpy.clock.Clock().now().to_msg()
         marker.id = int(self.id)
-        marker.pose = PoseWithCovariance()
-        marker.pose.pose.position = Point(x=x, y=y, z=z)
-        # roll, pitch, yaw to quaternion
-        roll = math.radians(roll)
-        pitch = math.radians(pitch)
-        yaw = math.radians(yaw)
-        w = math.cos(roll / 2) * math.cos(pitch / 2) * math.cos(yaw / 2) + math.sin(roll / 2) * math.sin(pitch / 2) * math.sin(yaw / 2) # noqa
-        marker.pose.pose.orientation = Quaternion(x=float(roll), y=float(pitch), z=float(yaw), w=float(w))
+        marker.x = x
+        marker.y = y
+        marker.z = z
+        marker.roll = roll
+        marker.pitch = pitch
+        marker.yaw = yaw
         marker.confidence = 1.0
         return marker
 
@@ -165,6 +172,16 @@ class Aruco:
 
     def is_empty(self):
         return len(self.x_list.items) == 0
+
+    def euler_to_quaternion(self, roll, pitch, yaw):
+        # 將Euler角轉換為旋轉矩陣
+        rotation_matrix = Rotation.from_euler("xyz", [roll, pitch, yaw]).as_matrix()
+
+        # 將旋轉矩陣轉換為四元數
+        quaternion = Rotation.from_matrix(rotation_matrix).as_quat()
+
+        return quaternion
+
     def quaternion_to_euler(self, quaternion):
         x = quaternion.x
         y = quaternion.y
@@ -181,7 +198,8 @@ class Aruco:
         t4 = +1.0 - 2.0 * (y * y + z * z)
         Z = math.atan2(t3, t4)
         return X, Y, Z
-    def fromMsgMarker2Aruco(self, marker):
+
+    def fromMsgMarker2Aruco(self, marker: Marker):
         """
         Converts a marker message to an Aruco object.
 
@@ -194,11 +212,10 @@ class Aruco:
         if marker.confidence < 0.5:
             return None
         self.id = marker.id
-        self.x_list.add_element(marker.pose.pose.position.x)
-        self.y_list.add_element(marker.pose.pose.position.y)
-        self.z_list.add_element(marker.pose.pose.position.z)
-        roll, pitch, yaw = self.quaternion_to_euler(marker.pose.pose.orientation)
-        self.yaw_list.add_element(yaw)
-        self.pitch_list.add_element(pitch)
-        self.roll_list.add_element(roll)
+        self.x_list.add_element(marker.x)
+        self.y_list.add_element(marker.y)
+        self.z_list.add_element(marker.z)
+        self.yaw_list.add_element(marker.yaw)
+        self.pitch_list.add_element(marker.pitch)
+        self.roll_list.add_element(marker.roll)
         return self
