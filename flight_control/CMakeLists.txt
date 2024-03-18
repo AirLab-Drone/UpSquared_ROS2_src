@@ -55,7 +55,7 @@ install(DIRECTORY
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "srv/GetCloestAruco.srv"
+  "srv/GetCloestAruco.srv" #! 刪掉不會用到的services
   DEPENDENCIES aruco_msgs
  )
 

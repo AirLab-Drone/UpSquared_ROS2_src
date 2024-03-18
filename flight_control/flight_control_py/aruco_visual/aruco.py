@@ -5,6 +5,7 @@ import cv2
 import math
 import rclpy
 
+
 class LimitedList:
     def __init__(self, initial_size=20):
         self.items = []
@@ -128,7 +129,7 @@ class Aruco:
         yaw = math.radians(yaw)
         w = math.cos(roll / 2) * math.cos(pitch / 2) * math.cos(yaw / 2) + math.sin(roll / 2) * math.sin(pitch / 2) * math.sin(yaw / 2) # noqa
         marker.pose.pose.orientation = Quaternion(x=float(roll), y=float(pitch), z=float(yaw), w=float(w))
-
+        marker.confidence = 1.0
         return marker
 
     def checkStd(self):
@@ -136,7 +137,7 @@ class Aruco:
         y_std = self.y_list.calculate_std()
         z_std = self.z_list.calculate_std()
         yaw_std = self.yaw_list.calculate_std()
-        if x_std > 0.02 or y_std > 0.02 or z_std > 0.02 or yaw_std > 2:
+        if x_std > 0.05 or y_std > 0.05 or z_std > 0.05 or yaw_std > 2:
             return False
         return True
 
@@ -181,6 +182,17 @@ class Aruco:
         Z = math.atan2(t3, t4)
         return X, Y, Z
     def fromMsgMarker2Aruco(self, marker):
+        """
+        Converts a marker message to an Aruco object.
+
+        Args:
+            marker (Marker): The marker message to convert.
+
+        Returns:
+            Aruco: The converted Aruco object, or None if the marker confidence is below 0.5.
+        """
+        if marker.confidence < 0.5:
+            return None
         self.id = marker.id
         self.x_list.add_element(marker.pose.pose.position.x)
         self.y_list.add_element(marker.pose.pose.position.y)

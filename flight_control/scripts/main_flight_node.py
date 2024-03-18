@@ -2,6 +2,7 @@
 import time
 import rclpy
 from rclpy.node import Node
+import threading
 from flight_control_py.flight.base_control import BaseControl as FlightControl
 from flight_control_py.flight.flight_controller_info import FlightInfo
 from flight_control_py.flight.mission import Mission
@@ -10,6 +11,9 @@ from flight_control_py.flight.mission import Mission
 class MainFlightNode(Node):
     def __init__(self):
         super().__init__("main_flight_node")
+        self.controller = FlightControl(self)
+        self.flight_info = FlightInfo(self)
+        self.mission = Mission(self.controller, self.flight_info, self)
 
     def wait(self, controller):
         controller.setZeroVelocity()
@@ -37,15 +41,10 @@ class MainFlightNode(Node):
         flightController.destroy()
 
     def arucoLandingTest(self):
-        # flight_info_node = rclpy.create_node("flight_info")
-        controller = FlightControl(self)
-        flight_info = FlightInfo(self)
-        while not controller.armAndTakeoff(alt=2):
+        while not self.controller.armAndTakeoff(alt=2):
             print("armAndTakeoff fail")
         time.sleep(5)
-        mission = Mission(controller, flight_info,self)
-        mission.landedOnPlatform()
-        controller.destroy()
+        threading.Thread(target=self.mission.landedOnPlatform).start()
 
 
 def main():
@@ -53,6 +52,7 @@ def main():
         rclpy.init()
     flight_node = MainFlightNode()
     flight_node.arucoLandingTest()
+    print("main_flight_node is running")
     rclpy.spin(flight_node)
     flight_node.destroy_node()
     rclpy.shutdown()

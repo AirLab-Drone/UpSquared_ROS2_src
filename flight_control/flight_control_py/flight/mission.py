@@ -6,6 +6,7 @@ from flight_control_py.flight.base_control import BaseControl as FlightControl
 from flight_control_py.flight.flight_controller_info import FlightInfo
 from flight_control_py.aruco_visual.aruco import Aruco
 from flight_control.srv import GetCloestAruco
+from aruco_msgs.msg import Marker
 
 
 class Mission:
@@ -17,8 +18,12 @@ class Mission:
         self.controller = controller
         self.flight_info = flight_info
         self.node = node
-        self.getCloestArucoClient = self.node.create_client(GetCloestAruco, 'get_cloest_aruco')
-            
+        self.cloest_aruco = None
+        # self.getCloestArucoClient = self.node.create_client(GetCloestAruco, 'get_cloest_aruco')
+        self.sub = self.node.create_subscription(Marker, 'cloest_aruco', self.cloest_aruco_callback, 10)
+        print('created sub')
+    def cloest_aruco_callback(self, msg):
+        self.cloest_aruco = Aruco(msg.id).fromMsgMarker2Aruco(msg)
 
     def landedOnPlatform(self):
         """
@@ -38,8 +43,6 @@ class Mission:
         max_speed = 0.5  # 速度 單位:公尺/秒
         max_yaw = 5*3.14/180  # 5度
         downward_distance = -0.2  # the distance to move down
-        count = 0  # count of no aruco
-        max_count = 200  # max count of no aruco
         pid_x = PID(
             0.5, 0.25, 0, 0, time=self.controller.node.get_clock().now().nanoseconds * 1e-9
         )
@@ -49,33 +52,27 @@ class Mission:
         pid_yaw = PID(
             1, 0.5, 0, 0, time=self.controller.node.get_clock().now().nanoseconds * 1e-9
         )
+        last_moveup_time = rclpy.clock.Clock().now()
         while True:
             # rclpy.spin_once(self.flight_info.node)
             # ----------------------- get downward aruco coordinate ---------------------- #
-            get_cloest_aruco_future = self.getCloestArucoClient.call_async(GetCloestAruco.Request())
-            rclpy.spin_until_future_complete(self.node, get_cloest_aruco_future)
-            closest_aruco = None
-            if get_cloest_aruco_future.result().valid:
-                closest_aruco = Aruco().fromMsgMarker2Aruco(get_cloest_aruco_future.result().aruco)
-
+            closest_aruco = self.cloest_aruco
             if closest_aruco is None:
-                count += 1
-                if count > max_count:
-                    print('move up')
+                if rclpy.clock.Clock().now() - last_moveup_time > rclpy.time.Duration(seconds=0.5):
+                    # print('move up')
                     self.controller.sendPositionTargetVelocity(0, 0, 0.5, 0)
-                    count = 0
+                    last_moveup_time = rclpy.clock.Clock().now()
                 # self.controller.setZeroVelocity()
                 continue
             x, y, z, yaw, _, _ = closest_aruco.getCoordinate()
             if x is None or y is None or z is None or yaw is None:
-                count += 1
-                if count > max_count:
-                    print('move up')
+                if rclpy.clock.Clock().now() - last_moveup_time > rclpy.time.Duration(seconds=0.5):
+                    # print('move up')
                     self.controller.sendPositionTargetVelocity(0, 0, 0.5, 0)
-                    count = 0
+                    last_moveup_time = rclpy.clock.Clock().now()
                 # self.controller.setZeroVelocity()
                 continue
-            count = 0
+            print(f"closest_aruco:{closest_aruco}")
             # -------------------------------- PID control ------------------------------- #
             move_x = -pid_x.PID(
                 x, self.controller.node.get_clock().now().nanoseconds * 1e-9
