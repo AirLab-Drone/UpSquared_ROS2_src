@@ -156,10 +156,11 @@ def main():
     if not rclpy.ok():
         rclpy.init()
     aruco_detector = ArucoDetector(
-        video_source=video_capture_from_ros2.VideoCaptureFromRos2(
-            # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
-            "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
-        )
+        video_source= cv2.VideoCapture(0)
+        # video_source=video_capture_from_ros2.VideoCaptureFromRos2(
+        #     # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
+        #     "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
+        # )
     )
     # aruco_detector.cap = video_capture_from_ros2.VideoCaptureFromRos2(
     #     # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
