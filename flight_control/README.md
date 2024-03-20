@@ -1,5 +1,6 @@
 # python required
 opencv-python  
+opencv-contrib-python  
 scipy  
 cv_bridge  
 mavros  

@@ -25,7 +25,7 @@ class ArucoDetector(Node):
     # DRAWARUCO = True
     is_running = True
 
-    def __init__(self, video_source):
+    def __init__(self, video_source, save_video:bool = False):
         super().__init__("aruco_detector")
         self.cap = video_source
         self.frame = None
@@ -36,6 +36,10 @@ class ArucoDetector(Node):
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_50)
         aruco_params = cv2.aruco.DetectorParameters()
         self.detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
+        if(save_video):
+            #save with mp4
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            self.out = cv2.VideoWriter(f'bottom_video/{rclpy.clock.Clock().now().nanoseconds}.mp4', fourcc, 30.0, (640, 480))
         # ---------------------------------- service --------------------------------- #
         # -------------------------------- publishers -------------------------------- #
         self.aruco_publisher = self.create_publisher(MarkerArray, "aruco_markers", 10)
@@ -53,9 +57,11 @@ class ArucoDetector(Node):
             if self.frame is None:
                 return
             (corners, ids, rejected) = self.detector.detectMarkers(self.frame)
-            self.frame = cv2.aruco.drawDetectedMarkers(
-                self.frame, corners, ids, (0, 255, 0)
-            )
+            if hasattr(self, "out") and self.out is not None:
+                self.frame = cv2.aruco.drawDetectedMarkers(
+                    self.frame, corners, ids, (0, 255, 0)
+                )
+                self.out.write(self.frame)
 
             if len(corners) > 0:
                 for i in range(len(ids)):
@@ -71,6 +77,7 @@ class ArucoDetector(Node):
             marker_array_temp.header.frame_id = "aruco_list"
             marker_array_temp.header.stamp = rclpy.clock.Clock().now().to_msg()
             self.aruco_publisher.publish(marker_array_temp)
+            # self.debug()
 
     def stop(self):
         self.is_running = False
@@ -156,11 +163,12 @@ def main():
     if not rclpy.ok():
         rclpy.init()
     aruco_detector = ArucoDetector(
-        video_source= cv2.VideoCapture(0)
+        video_source= cv2.VideoCapture(0),
         # video_source=video_capture_from_ros2.VideoCaptureFromRos2(
         #     # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
         #     "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
         # )
+        save_video=True
     )
     # aruco_detector.cap = video_capture_from_ros2.VideoCaptureFromRos2(
     #     # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
