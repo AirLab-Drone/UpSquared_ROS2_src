@@ -25,13 +25,14 @@ class ArucoDetector(Node):
     # DRAWARUCO = True
     is_running = True
 
-    def __init__(self, video_source, save_video:bool = False):
+    def __init__(self, video_source, save_video:bool = False, rotate_deg:float = 0):
         super().__init__("aruco_detector")
         self.cap = video_source
         self.frame = None
         self.arucoList = []
         self.count = 0
         self.start_time = self.get_clock().now()
+        self.rotate_deg = rotate_deg
         timer_period = 0.05  # seconds
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_50)
         aruco_params = cv2.aruco.DetectorParameters()
@@ -139,8 +140,26 @@ class ArucoDetector(Node):
             self.cloest_aruco_publisher.publish(marker)
         else:
             marker = closest_aruco.getCoordinateWithMarkerMsg()
+            if(self.rotate_deg != 0):
+                marker.x, marker.y, marker.z, marker.yaw, marker.pitch, marker.roll = self.rotateArucoCoordinate(
+                    marker.x, marker.y, marker.z, marker.yaw, marker.pitch, marker.roll, self.rotate_deg
+                )
             self.cloest_aruco_publisher.publish(marker)
         print(marker)
+
+    def rotateArucoCoordinate(self, x, y, z, yaw, pitch, roll, rotate_deg):
+        """
+        @param x,y,z: coordinate
+        @param yaw,pitch,roll: quaternion
+        @param rotate_deg: rotate degree
+        @return: new coordinate
+        """
+        rotate_deg = math.radians(rotate_deg)
+        x = x * math.cos(rotate_deg) - y * math.sin(rotate_deg)
+        y = x * math.sin(rotate_deg) + y * math.cos(rotate_deg)
+        yaw += rotate_deg
+        return x, y, z, yaw, pitch, roll
+
 
     def addNewAruco(self, id, corner):
         for aruco in self.arucoList:
@@ -168,7 +187,8 @@ def main():
         #     # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
         #     "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
         # )
-        save_video=True
+        save_video=True,
+        rotate_deg=180,
     )
     # aruco_detector.cap = video_capture_from_ros2.VideoCaptureFromRos2(
     #     # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
