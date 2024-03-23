@@ -44,25 +44,25 @@ class Mission:
         """
         # --------------------------------- variable --------------------------------- #
         lowest_high = 0.7  # 最低可看到aruco的高度 單位:公尺
-        max_speed = 0.2  # 速度 單位:公尺/秒
+        max_speed = 0.5  # 速度 單位:公尺/秒
         max_yaw = 15 * 3.14 / 180  # 15度
         downward_speed = -0.2  # the distance to move down
         pid_x = PID(
-            0.5,
-            0.25,
+            0.2,
+            0,
             0,
             0,
             time=self.controller.node.get_clock().now().nanoseconds * 1e-9,
         )
         pid_y = PID(
-            0.5,
-            0.25,
+            0.2,
+            0,
             0,
             0,
             time=self.controller.node.get_clock().now().nanoseconds * 1e-9,
         )
         pid_yaw = PID(
-            0.5, 0, 0, 0, time=self.controller.node.get_clock().now().nanoseconds * 1e-9
+            0.1, 0.05, 0, 0, time=self.controller.node.get_clock().now().nanoseconds * 1e-9
         )
         last_moveup_time = rclpy.clock.Clock().now()
         while True:
@@ -73,7 +73,7 @@ class Mission:
                 if rclpy.clock.Clock().now() - last_moveup_time > rclpy.time.Duration(
                     seconds=0.5
                 ):
-                    if(self.flight_info.rangefinder_alt < 3):
+                    if self.flight_info.rangefinder_alt < 3:
                         # print('move up')
                         self.controller.sendPositionTargetVelocity(0, 0, 0.2, 0)
                         last_moveup_time = rclpy.clock.Clock().now()
@@ -84,7 +84,7 @@ class Mission:
                 if rclpy.clock.Clock().now() - last_moveup_time > rclpy.time.Duration(
                     seconds=0.5
                 ):
-                    if(self.flight_info.rangefinder_alt < 3):
+                    if self.flight_info.rangefinder_alt < 3:
                         # print('move up')
                         self.controller.sendPositionTargetVelocity(0, 0, 0.2, 0)
                         last_moveup_time = rclpy.clock.Clock().now()
@@ -101,12 +101,12 @@ class Mission:
             move_yaw = pid_yaw.PID(
                 yaw, self.controller.node.get_clock().now().nanoseconds * 1e-9
             )  # convert to radians
-
+            # print(f"x:{move_x}, y:{move_y}, yaw:{move_yaw}, high:{self.flight_info.rangefinder_alt}")
             diffrent_distance = math.sqrt(x**2 + y**2)
             # -------------------------- limit move_x and move_y and move_yaw------------------------- #
-            move_x = min(max(x, -max_speed), max_speed)
-            move_y = min(max(y, -max_speed), max_speed)
-            move_yaw = min(max(move_yaw * 3.14 / 180, -max_yaw), max_yaw)
+            move_x = min(max(-x, -max_speed), max_speed)
+            move_y = min(max(-y, -max_speed), max_speed)
+            move_yaw = min(max(-yaw * 3.14 / 180, -max_yaw), max_yaw)
             # ----------------------------- send velocity command ----------------------------- #
             if (
                 diffrent_distance < 0.03
@@ -136,7 +136,7 @@ class Mission:
                     0,
                 )
             print(
-                f"move_x:{move_y}, move_y:{-move_x}, move_yaw:{move_yaw}, diffrent_distance:{diffrent_distance}"
+                f"move_x:{move_y}, move_y:{move_x}, move_yaw:{move_yaw}, diffrent_distance:{diffrent_distance}"
             )
             # time.sleep(1)
         self.controller.setZeroVelocity()

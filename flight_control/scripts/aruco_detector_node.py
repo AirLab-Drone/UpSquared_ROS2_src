@@ -154,10 +154,10 @@ class ArucoDetector(Node):
         @param rotate_deg: rotate degree
         @return: new coordinate
         """
+        yaw += rotate_deg
         rotate_deg = math.radians(rotate_deg)
         x = x * math.cos(rotate_deg) - y * math.sin(rotate_deg)
         y = x * math.sin(rotate_deg) + y * math.cos(rotate_deg)
-        yaw += rotate_deg
         return x, y, z, yaw, pitch, roll
 
 
@@ -182,18 +182,14 @@ def main():
     if not rclpy.ok():
         rclpy.init()
     aruco_detector = ArucoDetector(
-        video_source= cv2.VideoCapture(0),
-        # video_source=video_capture_from_ros2.VideoCaptureFromRos2(
-        #     # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
-        #     "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
-        # )
+        # video_source= cv2.VideoCapture(0),
+        video_source=video_capture_from_ros2.VideoCaptureFromRos2(
+            # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
+            "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
+        ),
         save_video=True,
-        rotate_deg=180,
+        rotate_deg=0,
     )
-    # aruco_detector.cap = video_capture_from_ros2.VideoCaptureFromRos2(
-    #     # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
-    #     "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
-    # )
     rclpy.spin(aruco_detector)
     aruco_detector.destroy_node()
     rclpy.shutdown()
