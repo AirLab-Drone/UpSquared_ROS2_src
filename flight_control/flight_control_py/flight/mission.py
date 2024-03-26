@@ -62,7 +62,11 @@ class Mission:
             time=self.controller.node.get_clock().now().nanoseconds * 1e-9,
         )
         pid_yaw = PID(
-            0.1, 0.05, 0, 0, time=self.controller.node.get_clock().now().nanoseconds * 1e-9
+            0.1,
+            0.05,
+            0,
+            0,
+            time=self.controller.node.get_clock().now().nanoseconds * 1e-9,
         )
         last_moveup_time = rclpy.clock.Clock().now()
         while True:
@@ -106,12 +110,14 @@ class Mission:
             # -------------------------- limit move_x and move_y and move_yaw------------------------- #
             move_x = min(max(-x, -max_speed), max_speed)
             move_y = min(max(-y, -max_speed), max_speed)
+            if((360-yaw)<yaw):
+                yaw = -yaw
             move_yaw = min(max(-yaw * 3.14 / 180, -max_yaw), max_yaw)
             # ----------------------------- send velocity command ----------------------------- #
             if (
                 diffrent_distance < 0.03
                 and self.flight_info.rangefinder_alt <= lowest_high
-                and yaw < 5
+                and (0<yaw < 5 or 355<yaw<360)
             ):
                 self.controller.setZeroVelocity()
                 print(f"landing high:{self.flight_info.rangefinder_alt}")

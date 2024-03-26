@@ -155,6 +155,7 @@ class ArucoDetector(Node):
         @return: new coordinate
         """
         yaw += rotate_deg
+        yaw = yaw%360
         rotate_deg = math.radians(rotate_deg)
         x = x * math.cos(rotate_deg) - y * math.sin(rotate_deg)
         y = x * math.sin(rotate_deg) + y * math.cos(rotate_deg)
@@ -188,7 +189,7 @@ def main():
             "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
         ),
         save_video=True,
-        rotate_deg=0,
+        rotate_deg=180,
     )
     rclpy.spin(aruco_detector)
     aruco_detector.destroy_node()
