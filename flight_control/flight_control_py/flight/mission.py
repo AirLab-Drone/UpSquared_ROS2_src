@@ -44,7 +44,7 @@ class Mission:
         """
         # --------------------------------- variable --------------------------------- #
         lowest_high = 0.7  # 最低可看到aruco的高度 單位:公尺
-        max_speed = 0.5  # 速度 單位:公尺/秒
+        max_speed = 0.3  # 速度 單位:公尺/秒
         max_yaw = 15 * 3.14 / 180  # 15度
         downward_speed = -0.2  # the distance to move down
         pid_x = PID(
