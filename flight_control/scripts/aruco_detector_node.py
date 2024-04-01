@@ -40,8 +40,11 @@ class ArucoDetector(Node):
         self.detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
         if(save_video):
             #save with mp4
+            ret, frame = self.cap.read()
+            while not ret:
+                ret, frame = self.cap.read()
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            self.out = cv2.VideoWriter(f'bottom_video/{rclpy.clock.Clock().now().nanoseconds}.mp4', fourcc, 30.0, (640, 480))
+            self.out = cv2.VideoWriter(f'bottom_video/{rclpy.clock.Clock().now().nanoseconds}.mp4', fourcc, 30.0, (frame.shape[1], frame.shape[0]))
         # ---------------------------------- service --------------------------------- #
         # -------------------------------- publishers -------------------------------- #
         self.aruco_publisher = self.create_publisher(MarkerArray, "aruco_markers", 10)
@@ -75,7 +78,7 @@ class ArucoDetector(Node):
                     aruco.update(id, corners[np.where(ids == aruco.id)[0][0]])
                 if not aruco.is_empty():
                     marker_array_temp.markers.append(aruco.getCoordinateWithMarkerMsg())
-            # print(marker_array_temp.markers)
+                    # print(aruco.getCoordinate())
             marker_array_temp.header.frame_id = "aruco_list"
             marker_array_temp.header.stamp = rclpy.clock.Clock().now().to_msg()
             self.aruco_publisher.publish(marker_array_temp)
@@ -146,8 +149,7 @@ class ArucoDetector(Node):
                     marker.x, marker.y, marker.z, marker.yaw, marker.pitch, marker.roll, self.rotate_deg
                 )
             self.cloest_aruco_publisher.publish(marker)
-        print(marker)
-
+        print(f'x: {marker.x:.2f}, y: {marker.y:.2f}, z: {marker.z:.2f}, yaw: {marker.yaw:.2f}, pitch: {marker.pitch:.2f}, roll: {marker.roll:.2f}')
     def rotateArucoCoordinate(self, x, y, z, yaw, pitch, roll, rotate_deg):
         """
         @param x,y,z: coordinate
@@ -158,8 +160,10 @@ class ArucoDetector(Node):
         yaw += rotate_deg
         yaw = yaw%360
         rotate_deg = math.radians(rotate_deg)
-        x = x * math.cos(rotate_deg) - y * math.sin(rotate_deg)
-        y = x * math.sin(rotate_deg) + y * math.cos(rotate_deg)
+        temp_x = x
+        temp_y = y
+        x = temp_x * math.cos(rotate_deg) - temp_y * math.sin(rotate_deg)
+        y = temp_x * math.sin(rotate_deg) + temp_y * math.cos(rotate_deg)
         return x, y, z, yaw, pitch, roll
 
 
@@ -189,7 +193,7 @@ def main():
         #     # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
         #     "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
         # ),
-        save_video=True,
+        save_video=False,
         rotate_deg=90,
     )
     rclpy.spin(aruco_detector)
