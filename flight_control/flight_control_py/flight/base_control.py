@@ -7,7 +7,10 @@ from sensor_msgs.msg import Range
 
 
 class BaseControl:
-    """透過mavros控制無人機飛行。"""
+    """
+    透過mavros控制無人機飛行。
+    座標係：x: 向前為正, y: 向左為正, z: 向上為正
+    """
 
     def __init__(self, node: Node):
         if not rclpy.ok():
@@ -17,7 +20,7 @@ class BaseControl:
             PositionTarget, "/mavros/setpoint_raw/local", 10
         )
         self.msg = self.setInitPositionTarget()
-
+    #todo 刪掉這個function
     def simpleFlight(self, x, y, z, duration):
         """
         @param x: x-axis velocity in m/s
