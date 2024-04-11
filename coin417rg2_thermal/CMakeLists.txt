@@ -42,7 +42,7 @@ include_directories(include/coin417rg2_thermal)
 # ament_target_dependencies
 # 用於指定目標依賴的 ROS 套件
 # 這個命令是由 ament_cmake package 提供的功能，用於指定 ROS 2 packages 之間的依賴關係。
-# 它會確保目標在編譯時能夠找到所需的 ROS 2 套件，並將其包含在最終的目標中。
+# 它會確保目標在編譯時能夠找到所需的 ROS 2 套件，並將其包含在最終的目標中。 
 
 # /* ----------------------------------- 測試用 ---------------------------------- */
 add_executable(test_node src/test.cpp)
