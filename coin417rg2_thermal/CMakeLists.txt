@@ -80,12 +80,17 @@ ament_target_dependencies(COIN417RG2_ros2_node
     OpenCV)
 
 
-
 install(TARGETS
   test_node
   COIN417RG2_ros2_node
   DESTINATION lib/${PROJECT_NAME}
 )
- 
+
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 
 ament_package()
