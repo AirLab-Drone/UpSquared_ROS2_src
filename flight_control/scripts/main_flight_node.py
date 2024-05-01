@@ -25,9 +25,9 @@ class MainFlightNode(Node):
         time.sleep(5)
         
     def arucoLandingTest(self):
-        # while not self.controller.armAndTakeoff(alt=2):
-        #     print("armAndTakeoff fail")
-        # time.sleep(5)
+        while not self.controller.armAndTakeoff(alt=2): # Takeoff
+            print("armAndTakeoff fail")
+        time.sleep(5)
         threading.Thread(target=self.mission.landedOnPlatform).start()
 
 

@@ -213,7 +213,7 @@ def main():
         #     # "/world/iris_runway/model/camera/link/camera_link/sensor/camera1/image",
         #     "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
         # ),
-        save_video=False,
+        save_video=True,
         rotate_deg=90,
         offset_x=0,
         offset_y=0,
