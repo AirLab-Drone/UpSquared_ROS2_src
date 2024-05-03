@@ -159,7 +159,11 @@ class Mission:
             print("landing")
 
     def navigateTo(
-        self, destination_x: float, destination_y: float, destination_z: float
+        self,
+        destination_x: float,
+        destination_y: float,
+        destination_z: float,
+        bcn_orient_yaw: float,
     ):
         """
         Function to navigate the drone to a specified location.
@@ -181,9 +185,9 @@ class Mission:
         max_yaw = 15 * 3.14 / 180
 
         # --------------------------------- function --------------------------------- #
-        def around(a, b, threshold=0.5):
+        def around(a, b, threshold=0.5): #如果距離範圍在threshold內就回傳True
             return abs(a - b) < threshold
-
+        last_coordinate_time = self.flight_info.uwb_coordinate.header.stamp #取得最後一次的座標時間
         while (
             # 還沒到指定位置時繼續移動
             not (
@@ -191,6 +195,19 @@ class Mission:
                 and around(self.flight_info.uwb_coordinate.y, destination_y)
             )
         ):
+            if self.flight_info.uwb_coordinate.header.stamp == last_coordinate_time: #如果座標時間沒有更新不要更新移動速度
+                continue
             x_diff = destination_x - self.flight_info.uwb_coordinate.x
             y_diff = destination_y - self.flight_info.uwb_coordinate.y
-            yaw_diff = math.atan2(y_diff, x_diff)
+            yaw_diff = math.atan2(y_diff, x_diff) * 180 / math.pi
+            compass_heading = self.flight_info.compass_heading
+            rotate_deg = 90 - yaw_diff - compass_heading + bcn_orient_yaw
+            if 360 - rotate_deg < rotate_deg:
+                rotate_deg = -rotate_deg
+            move_yaw = min(max(-rotate_deg * 3.14 / 180, -max_yaw), max_yaw)
+            move_x = min(max(y_diff, -max_speed), max_speed)
+            move_y = min(max(-x_diff, -max_speed), max_speed)
+            self.controller.sendPositionTargetPosition(0, 0, 0, yaw=move_yaw)
+            self.controller.sendPositionTargetVelocity(move_x, move_y, 0, 0)
+        self.controller.setZeroVelocity()
+
