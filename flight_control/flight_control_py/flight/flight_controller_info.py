@@ -65,8 +65,10 @@ class FlightInfo:
         坐標系:x: 向右為正, y: 向前為正, z: 向上為正
         """
         LSB_M_TO_LAT_LONG = 8.993216059e-6
-        LAT_START = 22.5180977
-        LONG_START = 113.9007239
+        LAT_START = -35.363261         # used in simulation
+        LONG_START = 149.165230        # used in simulation
+        # LAT_START = 22.5180977
+        # LONG_START = 113.9007239
         self.coordinate = msg
         lat = msg.lat * 1e-7
         lon = msg.lon * 1e-7
@@ -74,6 +76,7 @@ class FlightInfo:
         x = (lon - LONG_START) / LSB_M_TO_LAT_LONG
         y = (lat - LAT_START) / LSB_M_TO_LAT_LONG
         print(f"x: {x}, y: {y}, z: {alt}")
+        # print(f"lat: {lat}, lon: {lon}, alt: {alt}")
         self.uwb_coordinate = XYZ(header=msg.header, x=x, y=y, z=alt)
 
     def compassCallback(self, msg):
@@ -81,7 +84,7 @@ class FlightInfo:
         Callback function for the compass subscription.
         """
         self.compass_heading = msg.data
-        print(f"compass heading: {self.compass_heading}")
+        # print(f"compass heading: {self.compass_heading}")
     def destroy(self):
         """
         Destroys the node and shuts down the ROS 2 system.

@@ -14,6 +14,15 @@ class Mission:
     包含都個任務的class，用於導航，降落等功能
     """
 
+    # define mode name
+    WAIT = -1
+    TAKE_OFF = 0
+    LANDING = 1
+    LANDIND_ON_PLATFORM = 2
+    NAVIGATION = 3
+
+    mode = WAIT
+
     def __init__(
         self, controller: FlightControl, flight_info: FlightInfo, node: Node
     ) -> None:
@@ -26,9 +35,29 @@ class Mission:
             Marker, "cloest_aruco", self.cloest_aruco_callback, 10
         )
 
+    # ---------------------------------------------------------------------------- #
+    #                                   callback                                   #
+    # ---------------------------------------------------------------------------- #
     def cloest_aruco_callback(self, msg):
         self.cloest_aruco = Aruco(msg.id).fromMsgMarker2Aruco(msg)
 
+    # ---------------------------------------------------------------------------- #
+    #                                   Function                                   #
+    # ---------------------------------------------------------------------------- #
+    def setMode(self, mode):
+        if mode not in [
+            self.WAIT,
+            self.TAKE_OFF,
+            self.LANDING,
+            self.LANDIND_ON_PLATFORM,
+            self.NAVIGATION,
+        ]:
+            return False
+        self.mode = mode
+
+    # ---------------------------------------------------------------------------- #
+    #                                    Mission                                   #
+    # ---------------------------------------------------------------------------- #
     def landedOnPlatform(self):
         """
         Function to control the drone to land on a platform using Aruco markers.
@@ -42,37 +71,20 @@ class Mission:
         Returns:
             None
         """
+        if self.mode != self.LANDIND_ON_PLATFORM:  # 如果不是降落模式就直接結束
+            return
         # --------------------------------- variable --------------------------------- #
-        lowest_high = 0.7  # 最低可看到aruco的高度 單位:公尺
-        max_speed = 0.3  # 速度 單位:公尺/秒
-        max_yaw = 15 * 3.14 / 180  # 15度
-        downward_speed = -0.2  # the distance to move down
-        # todo 刪除pid控制程式
-        pid_x = PID(
-            0.2,
-            0,
-            0,
-            0,
-            time=self.controller.node.get_clock().now().nanoseconds * 1e-9,
-        )
-        pid_y = PID(
-            0.2,
-            0,
-            0,
-            0,
-            time=self.controller.node.get_clock().now().nanoseconds * 1e-9,
-        )
-        pid_yaw = PID(
-            0.1,
-            0.05,
-            0,
-            0,
-            time=self.controller.node.get_clock().now().nanoseconds * 1e-9,
-        )
+        LOWEST_HEIGHT = 0.7  # 最低可看到aruco的高度 單位:公尺
+        MAX_SPEED = 0.3  # 速度 單位:公尺/秒
+        MAX_YAW = 15 * 3.14 / 180  # 15度
+        DOWNWARD_SPEED = -0.2  # the distance to move down
         last_moveup_time = rclpy.clock.Clock().now()
+        # ------------------------------- start mission ------------------------------ #
         while True:
-            # rclpy.spin_once(self.flight_info.node)
-            # ----------------------- get downward aruco coordinate ---------------------- #
+            if self.mode != self.LANDIND_ON_PLATFORM:  # 如果不是降落模式就直接結束
+                self.controller.setZeroVelocity()
+                return
+            # get downward aruco coordinate
             closest_aruco = self.cloest_aruco
             if closest_aruco is None:
                 if rclpy.clock.Clock().now() - last_moveup_time > rclpy.time.Duration(
@@ -103,29 +115,18 @@ class Mission:
                 # self.controller.setZeroVelocity()
                 continue
             last_moveup_time = rclpy.clock.Clock().now()
-            # -------------------------------- PID control ------------------------------- #
-            # todo 刪除pid控制程式
-            move_x = pid_x.PID(
-                marker_x, self.controller.node.get_clock().now().nanoseconds * 1e-9
-            )
-            move_y = pid_y.PID(
-                marker_y, self.controller.node.get_clock().now().nanoseconds * 1e-9
-            )
-            move_yaw = pid_yaw.PID(
-                marker_yaw, self.controller.node.get_clock().now().nanoseconds * 1e-9
-            )  # convert to radians
-            # print(f"x:{move_x}, y:{move_y}, yaw:{move_yaw}, high:{self.flight_info.rangefinder_alt}")
+            # PID control
             diffrent_distance = math.sqrt(marker_x**2 + marker_y**2)
-            # -------------------------- limit move_x and move_y and move_yaw------------------------- #
-            move_x = min(max(-marker_y, -max_speed), max_speed)
-            move_y = min(max(-marker_x, -max_speed), max_speed)
+            # imit move_x and move_y and move_yaw #
+            move_x = min(max(-marker_y, -MAX_SPEED), MAX_SPEED)
+            move_y = min(max(-marker_x, -MAX_SPEED), MAX_SPEED)
             if (360 - marker_yaw) < marker_yaw:
                 marker_yaw = -marker_yaw
-            move_yaw = min(max(-marker_yaw * 3.14 / 180, -max_yaw), max_yaw)
-            # ----------------------------- send velocity command ----------------------------- #
+            move_yaw = min(max(-marker_yaw * 3.14 / 180, -MAX_YAW), MAX_YAW)
+            # send velocity command#
             if (
                 diffrent_distance < 0.03
-                and self.flight_info.rangefinder_alt <= lowest_high
+                and self.flight_info.rangefinder_alt <= LOWEST_HEIGHT
                 and (0 < marker_yaw < 5 or 355 < marker_yaw < 360)
             ):
                 self.controller.setZeroVelocity()
@@ -135,11 +136,11 @@ class Mission:
                 )
                 break
             self.controller.sendPositionTargetPosition(0, 0, 0, yaw=move_yaw)
-            if self.flight_info.rangefinder_alt > lowest_high:
+            if self.flight_info.rangefinder_alt > LOWEST_HEIGHT:
                 self.controller.sendPositionTargetVelocity(
                     move_x,
                     move_y,
-                    downward_speed,
+                    DOWNWARD_SPEED,
                     0,
                 )
             else:
@@ -162,13 +163,12 @@ class Mission:
         self,
         destination_x: float,
         destination_y: float,
-        destination_z: float,
-        bcn_orient_yaw: float,
+        destination_z: float = 0,
+        bcn_orient_yaw: float = 0,
     ):
         """
         Function to navigate the drone to a specified location.
 
-        This function uses the PID controller to control the drone's movement.
         The drone moves towards the specified location until it reaches the location.
         The drone stops moving once it reaches the location.
 
@@ -180,34 +180,47 @@ class Mission:
         Returns:
             None
         """
+        # 如果不是前往火源模式就直接結束
+        if self.mode != self.NAVIGATION:
+            return
         # --------------------------------- variable --------------------------------- #
         max_speed = 0.3
         max_yaw = 15 * 3.14 / 180
 
         # --------------------------------- function --------------------------------- #
-        def around(a, b, threshold=0.5): #如果距離範圍在threshold內就回傳True
+        # 如果距離範圍在threshold內就回傳True
+        def around(a, b, threshold=0.5):
             return abs(a - b) < threshold
-        last_coordinate_time = self.flight_info.uwb_coordinate.header.stamp #取得最後一次的座標時間
-        while (
-            # 還沒到指定位置時繼續移動
-            not (
-                around(self.flight_info.uwb_coordinate.x, destination_x)
-                and around(self.flight_info.uwb_coordinate.y, destination_y)
-            )
+
+        # ------------------------------- start mission ------------------------------ #
+        while self.flight_info.uwb_coordinate.x ==0 and self.flight_info.uwb_coordinate.y == 0 and self.flight_info.uwb_coordinate.z == 0:
+            print("waiting for uwb coordinate")
+        # 持續計算距離並設置移動速度，還沒到指定位置時繼續移動
+        while not (
+            around(self.flight_info.uwb_coordinate.x, destination_x)
+            and around(self.flight_info.uwb_coordinate.y, destination_y)
         ):
-            if self.flight_info.uwb_coordinate.header.stamp == last_coordinate_time: #如果座標時間沒有更新不要更新移動速度
-                continue
+            # 如果不是前往火源模式就直接結束
+            if self.mode != self.NAVIGATION:
+                self.controller.setZeroVelocity()
+                return
+            # 取的目前位置與目標位置的差距
             x_diff = destination_x - self.flight_info.uwb_coordinate.x
             y_diff = destination_y - self.flight_info.uwb_coordinate.y
             yaw_diff = math.atan2(y_diff, x_diff) * 180 / math.pi
+            # 計算需要旋轉多少角度
             compass_heading = self.flight_info.compass_heading
             rotate_deg = 90 - yaw_diff - compass_heading + bcn_orient_yaw
             if 360 - rotate_deg < rotate_deg:
                 rotate_deg = -rotate_deg
+            if abs(rotate_deg) < 5:
+                rotate_deg = 0
+            # 限制最大旋轉角度
             move_yaw = min(max(-rotate_deg * 3.14 / 180, -max_yaw), max_yaw)
-            move_x = min(max(y_diff, -max_speed), max_speed)
-            move_y = min(max(-x_diff, -max_speed), max_speed)
-            self.controller.sendPositionTargetPosition(0, 0, 0, yaw=move_yaw)
-            self.controller.sendPositionTargetVelocity(move_x, move_y, 0, 0)
-        self.controller.setZeroVelocity()
 
+            move_forward = math.sqrt(x_diff**2 + y_diff**2)
+            move_forward = abs(min(max(move_forward, -max_speed), max_speed))
+            # print(f"move_forward: {move_forward}, move_yaw: {move_yaw}")
+            self.controller.sendPositionTargetPosition(0, 0, 0, yaw=move_yaw)
+            self.controller.sendPositionTargetVelocity(move_forward, 0, 0, 0)
+        self.controller.setZeroVelocity()
