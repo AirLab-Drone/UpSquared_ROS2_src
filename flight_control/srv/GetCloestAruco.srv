@@ -1,0 +1,4 @@
+
+---
+bool valid
+aruco_msgs/Marker aruco
