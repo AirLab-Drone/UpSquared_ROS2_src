@@ -184,8 +184,8 @@ class Mission:
         if self.mode != self.NAVIGATION:
             return
         # --------------------------------- variable --------------------------------- #
-        max_speed = 0.3
-        max_yaw = 15 * 3.14 / 180
+        MAX_SPEED = 0.3
+        MAX_YAW = 15 * 3.14 / 180
 
         # --------------------------------- function --------------------------------- #
         # 如果距離範圍在threshold內就回傳True
@@ -216,11 +216,12 @@ class Mission:
             if abs(rotate_deg) < 5:
                 rotate_deg = 0
             # 限制最大旋轉角度
-            move_yaw = min(max(-rotate_deg * 3.14 / 180, -max_yaw), max_yaw)
+            move_yaw = min(max(-rotate_deg * 3.14 / 180, -MAX_YAW), MAX_YAW)
 
             move_forward = math.sqrt(x_diff**2 + y_diff**2)
-            move_forward = abs(min(max(move_forward, -max_speed), max_speed))
+            move_forward = abs(min(max(move_forward, -MAX_SPEED), MAX_SPEED))
             # print(f"move_forward: {move_forward}, move_yaw: {move_yaw}")
             self.controller.sendPositionTargetPosition(0, 0, 0, yaw=move_yaw)
-            self.controller.sendPositionTargetVelocity(move_forward, 0, 0, 0)
+            if abs(rotate_deg) < MAX_YAW:
+                self.controller.sendPositionTargetVelocity(move_forward, 0, 0, 0)
         self.controller.setZeroVelocity()
