@@ -32,11 +32,11 @@ class MainFlightNode(Node):
         threading.Thread(target=self.mission.landedOnPlatform).start()
 
     def goToFireTest(self):
-        # while not self.controller.armAndTakeoff(alt=2):
-        #     print("armAndTakeoff fail")
-        # time.sleep(5)
+        while not self.controller.armAndTakeoff(alt=2):
+            print("armAndTakeoff fail")
+        time.sleep(5)
         self.mission.setMode(self.mission.NAVIGATION)
-        threading.Thread(target=self.mission.navigateTo, args=[0, 0, 0, 0]).start()
+        threading.Thread(target=self.mission.navigateTo, args=[13.054284387619752, 12.375995335838226, 0, 0]).start()
 
 
 def main():

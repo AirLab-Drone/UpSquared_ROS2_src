@@ -65,10 +65,10 @@ class FlightInfo:
         坐標系:x: 向右為正, y: 向前為正, z: 向上為正
         """
         LSB_M_TO_LAT_LONG = 8.993216059e-6
-        LAT_START = -35.363261         # used in simulation
-        LONG_START = 149.165230        # used in simulation
-        # LAT_START = 22.5180977
-        # LONG_START = 113.9007239
+        # LAT_START = -35.363261         # used in simulation
+        # LONG_START = 149.165230        # used in simulation
+        LAT_START = 22.5180977
+        LONG_START = 113.9007239
         self.coordinate = msg
         lat = msg.lat * 1e-7
         lon = msg.lon * 1e-7

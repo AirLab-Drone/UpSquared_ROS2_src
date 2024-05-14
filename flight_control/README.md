@@ -22,3 +22,15 @@ marker相對於相機的座標
 x 軸: 向右為正，向左為負  
 y 軸: 向後為正，向前為負  
 z 軸: 向上為正，向下為負  
+
+## 啟動MAVROS
+```
+sudo chmod 777 /dev/ttyACM0
+ros2 launch mavros apm.launch fcu_url:=/dev/ttyACM0
+```
+### 修改發布頻率
+```
+ros2 run mavros mav sys message-interval --id 24 --rate 100
+ros2 run mavros mav sys message-interval --id 33 --rate 100
+ros2 run mavros mav sys message-interval --id 132 --rate 100
+```
