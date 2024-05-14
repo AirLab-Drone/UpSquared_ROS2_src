@@ -15,13 +15,13 @@ class Mission:
     """
 
     # define mode name
-    WAIT = -1
-    TAKE_OFF = 0
-    LANDING = 1
-    LANDIND_ON_PLATFORM = 2
-    NAVIGATION = 3
+    WAIT_MODE = -1
+    TAKE_OFF_MODE = 0
+    LANDING_MODE = 1
+    LANDIND_ON_PLATFORM_MODE = 2
+    NAVIGATION_MODE = 3
 
-    mode = WAIT
+    mode = WAIT_MODE
 
     def __init__(
         self, controller: FlightControl, flight_info: FlightInfo, node: Node
@@ -44,20 +44,39 @@ class Mission:
     # ---------------------------------------------------------------------------- #
     #                                   Function                                   #
     # ---------------------------------------------------------------------------- #
-    def setMode(self, mode):
+    def __setMode(self, mode):
         if mode not in [
-            self.WAIT,
-            self.TAKE_OFF,
-            self.LANDING,
-            self.LANDIND_ON_PLATFORM,
-            self.NAVIGATION,
+            self.WAIT_MODE,
+            self.TAKE_OFF_MODE,
+            self.LANDING_MODE,
+            self.LANDIND_ON_PLATFORM_MODE,
+            self.NAVIGATION_MODE,
         ]:
             return False
         self.mode = mode
 
+    def stopMission(self):
+        self.__setMode(self.WAIT_MODE)
+        self.controller.setZeroVelocity()
+
     # ---------------------------------------------------------------------------- #
     #                                    Mission                                   #
     # ---------------------------------------------------------------------------- #
+    def simpleTakeoff(self, target_hight=2):
+        while not self.controller.armAndTakeoff(alt=target_hight):
+            print("armAndTakeoff fail")
+        while abs(self.flight_info.rangefinder_alt - target_hight) > 0.5:
+            print(f"hight offset: {self.flight_info.rangefinder_alt - target_hight}")
+        return True
+
+    def simpleLanding(self):
+        while not self.controller.land():
+            print("landing")
+        while self.flight_info.rangefinder_alt > 0.1:
+            print(f"landing high:{self.flight_info.rangefinder_alt}")
+        self.mode = self.WAIT_MODE
+        return True
+
     def landedOnPlatform(self):
         """
         Function to control the drone to land on a platform using Aruco markers.
@@ -71,8 +90,10 @@ class Mission:
         Returns:
             None
         """
-        if self.mode != self.LANDIND_ON_PLATFORM:  # 如果不是降落模式就直接結束
-            return
+        # 檢查先前模式是否為等待模式，定且設定目前模式為降落至平台模式
+        if self.mode != self.WAIT_MODE:
+            return False
+        self.__setMode(self.LANDIND_ON_PLATFORM_MODE)
         # --------------------------------- variable --------------------------------- #
         LOWEST_HEIGHT = 0.7  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
@@ -81,9 +102,10 @@ class Mission:
         last_moveup_time = rclpy.clock.Clock().now()
         # ------------------------------- start mission ------------------------------ #
         while True:
-            if self.mode != self.LANDIND_ON_PLATFORM:  # 如果不是降落模式就直接結束
+            # 設定中斷點，如果不是降落模式就直接結束
+            if self.mode != self.LANDIND_ON_PLATFORM_MODE:
                 self.controller.setZeroVelocity()
-                return
+                return False
             # get downward aruco coordinate
             closest_aruco = self.cloest_aruco
             if closest_aruco is None:
@@ -158,6 +180,10 @@ class Mission:
         print("now I want to land=================================")
         while not self.controller.land():
             print("landing")
+        while self.flight_info.rangefinder_alt > 0.1:
+            print(f"landing high:{self.flight_info.rangefinder_alt}")
+        self.mode = self.WAIT_MODE
+        return True
 
     def navigateTo(
         self,
@@ -180,9 +206,10 @@ class Mission:
         Returns:
             None
         """
-        # 如果不是前往火源模式就直接結束
-        if self.mode != self.NAVIGATION:
-            return
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            return False
+        self.__setMode(self.NAVIGATION_MODE)
         # --------------------------------- variable --------------------------------- #
         MAX_SPEED = 0.3
         MAX_YAW = 15 * 3.14 / 180
@@ -193,17 +220,22 @@ class Mission:
             return abs(a - b) < threshold
 
         # ------------------------------- start mission ------------------------------ #
-        while self.flight_info.uwb_coordinate.x ==0 and self.flight_info.uwb_coordinate.y == 0 and self.flight_info.uwb_coordinate.z == 0:
+        # 等待取得uwb座標
+        while (
+            self.flight_info.uwb_coordinate.x == 0
+            and self.flight_info.uwb_coordinate.y == 0
+            and self.flight_info.uwb_coordinate.z == 0
+        ):
             print("waiting for uwb coordinate")
         # 持續計算距離並設置移動速度，還沒到指定位置時繼續移動
         while not (
             around(self.flight_info.uwb_coordinate.x, destination_x)
             and around(self.flight_info.uwb_coordinate.y, destination_y)
         ):
-            # 如果不是前往火源模式就直接結束
-            if self.mode != self.NAVIGATION:
+            # 設定中斷點，如果不是前往火源模式就直接結束
+            if self.mode != self.NAVIGATION_MODE:
                 self.controller.setZeroVelocity()
-                return
+                return False
             # 取的目前位置與目標位置的差距
             x_diff = destination_x - self.flight_info.uwb_coordinate.x
             y_diff = destination_y - self.flight_info.uwb_coordinate.y
@@ -225,3 +257,5 @@ class Mission:
             if abs(rotate_deg) < MAX_YAW:
                 self.controller.sendPositionTargetVelocity(move_forward, 0, 0, 0)
         self.controller.setZeroVelocity()
+        self.mode = self.WAIT_MODE
+        return True
