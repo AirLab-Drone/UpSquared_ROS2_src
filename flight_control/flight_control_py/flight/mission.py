@@ -7,6 +7,7 @@ from flight_control_py.flight.flight_controller_info import FlightInfo
 from flight_control_py.aruco_visual.aruco import Aruco
 from flight_control.srv import GetCloestAruco
 from aruco_msgs.msg import Marker
+import time
 
 
 class Mission:
@@ -63,16 +64,23 @@ class Mission:
     #                                    Mission                                   #
     # ---------------------------------------------------------------------------- #
     def simpleTakeoff(self, target_hight=2):
+        count = 0
         while not self.controller.armAndTakeoff(alt=target_hight):
             print("armAndTakeoff fail")
-        while abs(self.flight_info.rangefinder_alt - target_hight) > 0.5:
-            print(f"hight offset: {self.flight_info.rangefinder_alt - target_hight}")
+            count += 1
+            if count > 5:
+                return False
+        # print('takeoff success')
+        # while abs(self.flight_info.rangefinder_alt - target_hight) > 0.5:
+        #     print(f'rangefinder alt: {self.flight_info.rangefinder_alt} target_hight: {target_hight}')
+        #     print(f"hight offset: {self.flight_info.rangefinder_alt - target_hight}")
+        self.mode = self.WAIT_MODE
         return True
 
     def simpleLanding(self):
         while not self.controller.land():
             print("landing")
-        while self.flight_info.rangefinder_alt > 0.1:
+        while self.flight_info.rangefinder_alt > 0.35:
             print(f"landing high:{self.flight_info.rangefinder_alt}")
         self.mode = self.WAIT_MODE
         return True
@@ -216,7 +224,7 @@ class Mission:
 
         # --------------------------------- function --------------------------------- #
         # 如果距離範圍在threshold內就回傳True
-        def around(a, b, threshold=0.5):
+        def around(a, b, threshold=0.2):
             return abs(a - b) < threshold
 
         # ------------------------------- start mission ------------------------------ #
@@ -242,16 +250,17 @@ class Mission:
             yaw_diff = math.atan2(y_diff, x_diff) * 180 / math.pi
             # 計算需要旋轉多少角度
             compass_heading = self.flight_info.compass_heading
-            rotate_deg = 90 - yaw_diff - compass_heading + bcn_orient_yaw
+            rotate_deg = (90 - yaw_diff - compass_heading + bcn_orient_yaw) % 360
             if 360 - rotate_deg < rotate_deg:
-                rotate_deg = -rotate_deg
-            if abs(rotate_deg) < 5:
+                rotate_deg = rotate_deg - 360
+            if abs(rotate_deg) < 5: # 如果角度小於5度就不旋轉
                 rotate_deg = 0
             # 限制最大旋轉角度
             move_yaw = min(max(-rotate_deg * 3.14 / 180, -MAX_YAW), MAX_YAW)
-
+            # 將須往前距離當作速度，並且限制最大速度
             move_forward = math.sqrt(x_diff**2 + y_diff**2)
             move_forward = abs(min(max(move_forward, -MAX_SPEED), MAX_SPEED))
+            print(f'rotate_deg: {rotate_deg}')
             # print(f"move_forward: {move_forward}, move_yaw: {move_yaw}")
             self.controller.sendPositionTargetPosition(0, 0, 0, yaw=move_yaw)
             if abs(rotate_deg) < MAX_YAW:

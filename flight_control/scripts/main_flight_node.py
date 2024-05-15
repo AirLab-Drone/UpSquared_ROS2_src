@@ -35,7 +35,8 @@ class MainFlightNode(Node):
             if not self.flow_thread.is_alive():
                 self.flow_thread = threading.Thread(
                     target=target, name=target_name
-                ).start()
+                )
+                self.flow_thread.start()
                 return
             if self.flow_thread.is_alive() and self.flow_thread.name == target_name:
                 print(f"{target_name} is running")
@@ -44,7 +45,8 @@ class MainFlightNode(Node):
                 self.mission.stopMission()
                 self.flow_thread = threading.Thread(
                     target=target, name=target_name
-                ).start()
+                )
+                self.flow_thread.start()
                 return
         # 判斷使用哪個流程
         if self.flow_mode == self.STOP_FLOW:
@@ -71,15 +73,24 @@ class MainFlightNode(Node):
         '''
         起飛 --> 飛到指定位置 --> 降落
         '''
-        is_done = self.mission.simpleTakeoff()
-        if not is_done:
-            print("takeoff fail")
+        if not self.mission.simpleLanding():
+            print("simpleLanding fail")
             return
-        is_done = self.mission.navigateTo(13.054284387619752, 12.375995335838226, 0, 0)
-        if not is_done:
+        time.sleep(5)
+        if not self.mission.simpleTakeoff():
+            print("takeoff fail")
+            self.mission.simpleLanding()
+            return
+        if not self.mission.navigateTo(-2, -4, 0, 0):
             print("navigateTo fail")
             return
-        is_done = self.mission.simpleLanding()
+        if not self.mission.navigateTo(0.12, 1.85, 0, 0):
+            print("navigateTo fail")
+            return
+        # if not self.mission.navigateTo(0, 0, 0, 0):
+        #     print("navigateTo fail")
+        #     return
+        self.mission.simpleLanding()
         self.flow_mode = self.STOP_FLOW
 
 

@@ -118,7 +118,7 @@ class BaseControl:
         set_mode_client = self.node.create_client(SetMode, "/mavros/set_mode")
         set_mode_request = SetMode.Request(base_mode=0, custom_mode=mode)
         future_set_mode = set_mode_client.call_async(set_mode_request)
-        rclpy.spin_until_future_complete(self.node, future_set_mode, timeout_sec=5)
+        self.node.executor.spin_until_future_complete(future_set_mode, timeout_sec=5)
         print(future_set_mode.result())
         if future_set_mode.result() is None:
             return False
@@ -131,7 +131,7 @@ class BaseControl:
         arming_client = self.node.create_client(CommandBool, "/mavros/cmd/arming")
         arming_request = CommandBool.Request(value=True)
         future_arming = arming_client.call_async(arming_request)
-        rclpy.spin_until_future_complete(self.node, future_arming, timeout_sec=5)
+        self.node.executor.spin_until_future_complete(future_arming, timeout_sec=5)
         print(future_arming.result())
         if future_arming.result() is None:
             return False
@@ -147,8 +147,10 @@ class BaseControl:
         takeoff_client = self.node.create_client(CommandTOL, "/mavros/cmd/takeoff")
         takeoff_request = CommandTOL.Request(altitude=alt)
         future_takeoff = takeoff_client.call_async(takeoff_request)
-        rclpy.spin_until_future_complete(self.node, future_takeoff, timeout_sec=5)
-        print(future_takeoff.result())
+        self.node.executor.spin_until_future_complete(future_takeoff, timeout_sec=5)
+        # print(future_takeoff.done())
+
+        # print(f'future_takeoff result: {future_takeoff.result()}')
         if future_takeoff.result() is None:
             return False
         if not future_takeoff.result().success:
@@ -160,7 +162,7 @@ class BaseControl:
         land_client = self.node.create_client(CommandTOL, "/mavros/cmd/land")
         land_request = CommandTOL.Request()
         future_land = land_client.call_async(land_request)
-        rclpy.spin_until_future_complete(self.node, future_land, timeout_sec=5)
+        self.node.executor.spin_until_future_complete(future_land, timeout_sec=5)
         print(future_land.result())
         if future_land.result() is None:
             return False
