@@ -21,9 +21,9 @@ class MainFlightNode(Node):
 
     def __init__(self):
         super().__init__("main_flight_node")
-        # -------------------------------- Parameters -------------------------------- #
-        # This parameter is used to set the four coner points of the world coordinate
+        # --------------------------------ros2 Parameters -------------------------------- #
         self.declare_parameter("simulation", False)
+        self.declare_parameter("bcn_orient_yaw", 0.0)
         # 創建控制實例
         self.controller = FlightControl(self)
         self.flight_info = FlightInfo(self)
@@ -72,9 +72,9 @@ class MainFlightNode(Node):
             self.mission.stopMission()
             print("stop flow")
             return
-        elif self.flow_mode == self.FLOW1_FLOW:
-            flowSwitch(self.flow1, "flow1")
-            return
+        # elif self.flow_mode == self.FLOW1_FLOW:
+        #     flowSwitch(self.flow1, "flow1")
+        #     return
         elif self.flow_mode == self.TEST_FLOW:
             flowSwitch(self.testFlow, "testFlow")
             return
@@ -97,30 +97,17 @@ class MainFlightNode(Node):
     #                                     Flow                                     #
     # ---------------------------------------------------------------------------- #
 
-    def arucoLandingTest(self):
-        self.mission.simpleTakeoff()
-        self.mission.landedOnPlatform()
-
-    def goToFireTest(self):
-        while not self.controller.armAndTakeoff(alt=2):
-            print("armAndTakeoff fail")
-        time.sleep(5)
-        threading.Thread(
-            target=self.mission.navigateTo,
-            args=[13.054284387619752, 12.375995335838226, 0, 0],
-        ).start()
-
     def testFlow(self):
-        if not self.mission.simpleTakeoff():
-            print("takeoff fail")
-            self.flow_mode = self.STOP_FLOW
-            return
         if not self.mission.simpleLanding():
             print("landing fail")
             self.flow_mode = self.STOP_FLOW
             return
         if not self.mission.simpleTakeoff():
             print("takeoff fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        if not self.mission.navigateTo(1, 1, 0, 0):
+            print("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
         self.flow_mode = self.STOP_FLOW
@@ -140,11 +127,12 @@ class MainFlightNode(Node):
             print("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
+        # set home position
         if not self.mission.navigateTo(0, 0, 0, 0):
             print("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
-        self.mission.simpleLanding()
+        self.mission.landedOnPlatform()
         self.flow_mode = self.STOP_FLOW
 
 
@@ -152,6 +140,7 @@ def main():
     if not rclpy.ok():
         rclpy.init()
     flight_node = MainFlightNode()
+    flight_node.flow_mode = flight_node.TEST_FLOW
     rclpy.spin(flight_node)
     flight_node.destroy_node()
     rclpy.shutdown()

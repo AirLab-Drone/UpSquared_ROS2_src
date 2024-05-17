@@ -74,6 +74,7 @@ class Mission:
         # while abs(self.flight_info.rangefinder_alt - target_hight) > 0.5:
         #     print(f'rangefinder alt: {self.flight_info.rangefinder_alt} target_hight: {target_hight}')
         #     print(f"hight offset: {self.flight_info.rangefinder_alt - target_hight}")
+        time.sleep(5)
         self.mode = self.WAIT_MODE
         return True
 
@@ -221,6 +222,7 @@ class Mission:
         # --------------------------------- variable --------------------------------- #
         MAX_SPEED = 0.3
         MAX_YAW = 15 * 3.14 / 180
+        bcn_orient_yaw = self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
 
         # --------------------------------- function --------------------------------- #
         # 如果距離範圍在threshold內就回傳True
@@ -250,7 +252,7 @@ class Mission:
             yaw_diff = math.atan2(y_diff, x_diff) * 180 / math.pi
             # 計算需要旋轉多少角度
             compass_heading = self.flight_info.compass_heading
-            rotate_deg = (90 - yaw_diff - compass_heading + bcn_orient_yaw) % 360
+            rotate_deg = (90 - yaw_diff - compass_heading - bcn_orient_yaw) % 360
             if 360 - rotate_deg < rotate_deg:
                 rotate_deg = rotate_deg - 360
             if abs(rotate_deg) < 5:  # 如果角度小於5度就不旋轉

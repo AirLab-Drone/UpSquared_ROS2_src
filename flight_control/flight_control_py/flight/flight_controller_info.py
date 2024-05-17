@@ -79,7 +79,7 @@ class FlightInfo:
         if self.node.get_parameter("simulation").get_parameter_value().bool_value:
             LAT_START = -35.363261  # used in simulation
             LONG_START = 149.165230  # used in simulation
-        print(f'LAT_START: {LAT_START}, LONG_START: {LONG_START}')
+        # print(f'LAT_START: {LAT_START}, LONG_START: {LONG_START}')
         self.coordinate = msg
         lat = msg.lat * 1e-7
         lon = msg.lon * 1e-7
