@@ -23,7 +23,7 @@ class MainFlightNode(Node):
         super().__init__("main_flight_node")
         # --------------------------------ros2 Parameters -------------------------------- #
         self.declare_parameter("simulation", False)
-        self.declare_parameter("bcn_orient_yaw", 0.0)
+        self.declare_parameter("bcn_orient_yaw", 70.0)
         # 創建控制實例
         self.controller = FlightControl(self)
         self.flight_info = FlightInfo(self)
@@ -98,15 +98,15 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        if not self.mission.simpleLanding():
-            print("landing fail")
-            self.flow_mode = self.STOP_FLOW
-            return
+        # if not self.mission.simpleLanding():
+        #     print("landing fail")
+        #     self.flow_mode = self.STOP_FLOW
+        #     return
         if not self.mission.simpleTakeoff():
             print("takeoff fail")
             self.flow_mode = self.STOP_FLOW
             return
-        if not self.mission.navigateTo(1, 1, 0, 0):
+        if not self.mission.navigateTo(5.848853140448176, 10.22993325175725, 0):
             print("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
@@ -128,7 +128,7 @@ class MainFlightNode(Node):
             self.flow_mode = self.STOP_FLOW
             return
         # set home position
-        if not self.mission.navigateTo(0, 0, 0, 0):
+        if not self.mission.navigateTo(14.043919234490593, 6.304752341077607, 0):
             print("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return

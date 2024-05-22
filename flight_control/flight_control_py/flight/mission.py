@@ -199,7 +199,6 @@ class Mission:
         destination_x: float,
         destination_y: float,
         destination_z: float = 0,
-        bcn_orient_yaw: float = 0,
     ):
         """
         Function to navigate the drone to a specified location.
@@ -252,7 +251,7 @@ class Mission:
             yaw_diff = math.atan2(y_diff, x_diff) * 180 / math.pi
             # 計算需要旋轉多少角度
             compass_heading = self.flight_info.compass_heading
-            rotate_deg = (90 - yaw_diff - compass_heading - bcn_orient_yaw) % 360
+            rotate_deg = (90 - yaw_diff - compass_heading + bcn_orient_yaw) % 360
             if 360 - rotate_deg < rotate_deg:
                 rotate_deg = rotate_deg - 360
             if abs(rotate_deg) < 5:  # 如果角度小於5度就不旋轉

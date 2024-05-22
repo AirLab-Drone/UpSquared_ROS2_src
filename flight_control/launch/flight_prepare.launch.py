@@ -1,6 +1,6 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, TimerAction, ExecuteProcess
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.launch_description_sources import AnyLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -34,11 +34,11 @@ def changeMavrosPublishRate(msg_id):
 def generate_launch_description():
     return LaunchDescription(
         [
-            Node(
-                package="flight_control",
-                executable="aruco_detector_node.py",
-                output="screen",
-            ),
+            # Node(
+            #     package="flight_control",
+            #     executable="aruco_detector_node.py",
+            #     output="screen",
+            # ),
             IncludeLaunchDescription(
                 AnyLaunchDescriptionSource(
                     os.path.join(
