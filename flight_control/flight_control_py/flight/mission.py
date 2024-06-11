@@ -74,7 +74,7 @@ class Mission:
         # while abs(self.flight_info.rangefinder_alt - target_hight) > 0.5:
         #     print(f'rangefinder alt: {self.flight_info.rangefinder_alt} target_hight: {target_hight}')
         #     print(f"hight offset: {self.flight_info.rangefinder_alt - target_hight}")
-        time.sleep(5)
+        time.sleep(7)
         self.mode = self.WAIT_MODE
         return True
 
@@ -220,7 +220,7 @@ class Mission:
         self.__setMode(self.NAVIGATION_MODE)
         # --------------------------------- variable --------------------------------- #
         MAX_SPEED = 0.3
-        MAX_YAW = 15 * 3.14 / 180
+        MAX_YAW = 20 * 3.14 / 180
         bcn_orient_yaw = self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
 
         # --------------------------------- function --------------------------------- #
@@ -261,8 +261,8 @@ class Mission:
             # 將須往前距離當作速度，並且限制最大速度
             move_forward = math.sqrt(x_diff**2 + y_diff**2)
             move_forward = abs(min(max(move_forward, -MAX_SPEED), MAX_SPEED))
-            # print(f"rotate_deg: {rotate_deg}")
-            # print(f"move_forward: {move_forward}, move_yaw: {move_yaw}")
+            print(f"rotate_deg: {rotate_deg}")
+            print(f"move_forward: {move_forward}, move_yaw: {move_yaw}")
             self.controller.sendPositionTargetPosition(0, 0, 0, yaw=move_yaw)
             if abs(rotate_deg) < MAX_YAW:
                 self.controller.sendPositionTargetVelocity(move_forward, 0, 0, 0)
