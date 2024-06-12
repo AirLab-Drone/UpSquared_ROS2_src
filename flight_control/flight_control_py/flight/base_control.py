@@ -20,20 +20,21 @@ class BaseControl:
             PositionTarget, "/mavros/setpoint_raw/local", 10
         )
         self.msg = self.setInitPositionTarget()
-    #todo 刪掉這個function
-    def simpleFlight(self, x, y, z, duration):
-        """
-        @param x: x-axis velocity in m/s
-        @param y: y-axis velocity in m/s
-        @param z: z-axis velocity in m/s
-        @param duration: duration in second
-        使無人機飛行x,y,z軸的速度，單位為m/s，持續duration秒。
-        """
-        start_time = time.time()
-        while time.time() - start_time < duration:
-            self.sendPositionTargetVelocity(x, y, z)
-            time.sleep(0.1)
-        self.sendPositionTargetVelocity(0, 0, 0)
+
+    # #todo 刪掉這個function
+    # def simpleFlight(self, x, y, z, duration):
+    #     """
+    #     @param x: x-axis velocity in m/s
+    #     @param y: y-axis velocity in m/s
+    #     @param z: z-axis velocity in m/s
+    #     @param duration: duration in second
+    #     使無人機飛行x,y,z軸的速度，單位為m/s，持續duration秒。
+    #     """
+    #     start_time = time.time()
+    #     while time.time() - start_time < duration:
+    #         self.sendPositionTargetVelocity(x, y, z)
+    #         time.sleep(0.1)
+    #     self.sendPositionTargetVelocity(0, 0, 0)
 
     def sendPositionTargetVelocity(self, x, y, z, yaw_rate=0):
         """
@@ -78,7 +79,7 @@ class BaseControl:
         """
         msg_obj = PositionTarget()
         msg_obj.coordinate_frame = 8
-        msg_obj.type_mask = 128
+        msg_obj.type_mask = 0b010111000000
         msg_obj.position.x = 0.0
         msg_obj.position.y = 0.0
         msg_obj.position.z = 0.0
@@ -143,7 +144,7 @@ class BaseControl:
     def takeoff(self, alt=3.2):
         if type(alt) != float:
             alt = float(alt)
-        print('takeoff alt:', alt)
+        print("takeoff alt:", alt)
         takeoff_client = self.node.create_client(CommandTOL, "/mavros/cmd/takeoff")
         takeoff_request = CommandTOL.Request(altitude=alt)
         future_takeoff = takeoff_client.call_async(takeoff_request)
@@ -175,8 +176,6 @@ class BaseControl:
         rclpy.shutdown()
 
 
-
-
 if __name__ == "__main__":
     rclpy.init()
     node_main = rclpy.create_node("flight_control_test")
@@ -184,5 +183,5 @@ if __name__ == "__main__":
     while not controler.armAndTakeoff(alt=2):
         print("armAndTakeoff fail")
     time.sleep(5)
-    print('turn 90 degree')
-    controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
+    print("turn 90 degree")
+    controler.sendPositionTargetPosition(0, 0, 0, 90 * 3.14159 / 180)
