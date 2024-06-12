@@ -183,7 +183,10 @@ class Mission:
                     0,
                 )
             print(
-                f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, diffrent_distance:{diffrent_distance:.2f}"
+                f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{diffrent_distance:.2f}"
+            )
+            self.node.get_logger().debug(
+                f"[Mission.landedOnPlatform] move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{diffrent_distance:.2f}"
             )
         self.controller.setZeroVelocity()
         print("now I want to land=================================")
@@ -221,7 +224,9 @@ class Mission:
         # --------------------------------- variable --------------------------------- #
         MAX_SPEED = 0.3
         MAX_YAW = 20 * 3.14 / 180
-        bcn_orient_yaw = self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
+        bcn_orient_yaw = (
+            self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
+        )
 
         # --------------------------------- function --------------------------------- #
         # 如果距離範圍在threshold內就回傳True

@@ -67,6 +67,7 @@ class FlightInfo:
         Callback function for the rangefinder subscription.
         """
         self.rangefinder_alt = msg.range
+        self.node.get_logger().debug(f"rangefinder alt: {self.rangefinder_alt}")
 
     def coordinateCallback(self, msg):
         """
@@ -89,20 +90,21 @@ class FlightInfo:
         # print(f"x: {x}, y: {y}, z: {alt}")
         # print(f"lat: {lat}, lon: {lon}, alt: {alt}")
         self.uwb_coordinate = XYZ(header=msg.header, x=x, y=y, z=alt)
+        self.node.get_logger().debug(f"uwb coordinate: x: {x}, y: {y}, alt: {alt}")
 
     def compassCallback(self, msg):
         """
         Callback function for the compass subscription.
         """
         self.compass_heading = msg.data
-        # print(f"compass heading: {self.compass_heading}")
+        self.node.get_logger().debug(f"compass heading: {self.compass_heading}")
 
     def stateCallback(self, msg):
         """
         Callback function for the state subscription.
         """
         self.state = msg
-        # print(f"state: {self.state}")
+        self.node.get_logger().debug(f"state: {self.state}")
 
     def destroy(self):
         """

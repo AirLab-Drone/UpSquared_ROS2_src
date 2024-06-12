@@ -98,15 +98,15 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        # if not self.mission.simpleLanding():
-        #     print("landing fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
+        if not self.mission.simpleLanding():
+            print("landing fail")
+            self.flow_mode = self.STOP_FLOW
+            return
         if not self.mission.simpleTakeoff():
             print("takeoff fail")
             self.flow_mode = self.STOP_FLOW
             return
-        if not self.mission.navigateTo(10.685832450016424, 10.941580781922672, 0):
+        if not self.mission.navigateTo(7, -5, 0):
             print("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return

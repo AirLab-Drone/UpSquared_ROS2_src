@@ -48,9 +48,9 @@ class BaseControl:
         self.msg.velocity.y = float(y)
         self.msg.velocity.z = float(z)
         self.msg.yaw_rate = float(yaw_rate)
-        # print(
-        #     f"x: {self.msg.velocity.x}, y: {self.msg.velocity.y}, z: {self.msg.velocity.z}, yaw_rate: {self.msg.yaw_rate}"
-        # )
+        self.node.get_logger().debug(
+            f"x: {self.msg.velocity.x}, y: {self.msg.velocity.y}, z: {self.msg.velocity.z}, yaw_rate: {self.msg.yaw_rate}"
+        )
         self.publisher.publish(self.msg)
 
     def sendPositionTargetPosition(self, x, y, z, yaw=0):
@@ -66,9 +66,9 @@ class BaseControl:
         self.msg.position.y = float(y)
         self.msg.position.z = float(z)
         self.msg.yaw = float(yaw)
-        # print(
-        #     f"x: {self.msg.position.x}, y: {self.msg.position.y}, z: {self.msg.position.z}, yaw: {self.msg.yaw}"
-        # )
+        self.node.get_logger().debug(
+            f"x: {self.msg.position.x}, y: {self.msg.position.y}, z: {self.msg.position.z}, yaw: {self.msg.yaw}"
+        )
         self.publisher.publish(self.msg)
 
     def setInitPositionTarget(self):
@@ -186,10 +186,3 @@ if __name__ == "__main__":
     time.sleep(5)
     print('turn 90 degree')
     controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
-    time.sleep(15)
-    print('turn 90 degree')
-    controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
-    time.sleep(15)
-    # controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
-    # controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
-    controler.land()

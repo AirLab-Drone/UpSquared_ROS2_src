@@ -39,11 +39,11 @@ def generate_launch_description():
     delay_time = 10.0
     return LaunchDescription(
         [
-            Node(
-                package="flight_control",
-                executable="aruco_detector_node.py",
-                output="screen",
-            ),
+            # Node(
+            #     package="flight_control",
+            #     executable="aruco_detector_node.py",
+            #     output="screen",
+            # ),
             IncludeLaunchDescription(
                 AnyLaunchDescriptionSource(
                     os.path.join(
