@@ -110,10 +110,6 @@ class MainFlightNode(Node):
             print("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
-        if not self.mission.navigateTo(0, 0, 0):
-            print("navigateTo fail")
-            self.flow_mode = self.STOP_FLOW
-            return
         self.flow_mode = self.STOP_FLOW
 
     def flow1(self):
