@@ -20,20 +20,21 @@ class BaseControl:
             PositionTarget, "/mavros/setpoint_raw/local", 10
         )
         self.msg = self.setInitPositionTarget()
-    #todo 刪掉這個function
-    def simpleFlight(self, x, y, z, duration):
-        """
-        @param x: x-axis velocity in m/s
-        @param y: y-axis velocity in m/s
-        @param z: z-axis velocity in m/s
-        @param duration: duration in second
-        使無人機飛行x,y,z軸的速度，單位為m/s，持續duration秒。
-        """
-        start_time = time.time()
-        while time.time() - start_time < duration:
-            self.sendPositionTargetVelocity(x, y, z)
-            time.sleep(0.1)
-        self.sendPositionTargetVelocity(0, 0, 0)
+
+    # #todo 刪掉這個function
+    # def simpleFlight(self, x, y, z, duration):
+    #     """
+    #     @param x: x-axis velocity in m/s
+    #     @param y: y-axis velocity in m/s
+    #     @param z: z-axis velocity in m/s
+    #     @param duration: duration in second
+    #     使無人機飛行x,y,z軸的速度，單位為m/s，持續duration秒。
+    #     """
+    #     start_time = time.time()
+    #     while time.time() - start_time < duration:
+    #         self.sendPositionTargetVelocity(x, y, z)
+    #         time.sleep(0.1)
+    #     self.sendPositionTargetVelocity(0, 0, 0)
 
     def sendPositionTargetVelocity(self, x, y, z, yaw_rate=0):
         """
@@ -48,9 +49,9 @@ class BaseControl:
         self.msg.velocity.y = float(y)
         self.msg.velocity.z = float(z)
         self.msg.yaw_rate = float(yaw_rate)
-        # print(
-        #     f"x: {self.msg.velocity.x}, y: {self.msg.velocity.y}, z: {self.msg.velocity.z}, yaw_rate: {self.msg.yaw_rate}"
-        # )
+        self.node.get_logger().debug(
+            f"x: {self.msg.velocity.x}, y: {self.msg.velocity.y}, z: {self.msg.velocity.z}, yaw_rate: {self.msg.yaw_rate}"
+        )
         self.publisher.publish(self.msg)
 
     def sendPositionTargetPosition(self, x, y, z, yaw=0):
@@ -66,9 +67,9 @@ class BaseControl:
         self.msg.position.y = float(y)
         self.msg.position.z = float(z)
         self.msg.yaw = float(yaw)
-        # print(
-        #     f"x: {self.msg.position.x}, y: {self.msg.position.y}, z: {self.msg.position.z}, yaw: {self.msg.yaw}"
-        # )
+        self.node.get_logger().debug(
+            f"x: {self.msg.position.x}, y: {self.msg.position.y}, z: {self.msg.position.z}, yaw: {self.msg.yaw}"
+        )
         self.publisher.publish(self.msg)
 
     def setInitPositionTarget(self):
@@ -78,7 +79,7 @@ class BaseControl:
         """
         msg_obj = PositionTarget()
         msg_obj.coordinate_frame = 8
-        msg_obj.type_mask = 128
+        msg_obj.type_mask = 0b010111000000
         msg_obj.position.x = 0.0
         msg_obj.position.y = 0.0
         msg_obj.position.z = 0.0
@@ -118,7 +119,7 @@ class BaseControl:
         set_mode_client = self.node.create_client(SetMode, "/mavros/set_mode")
         set_mode_request = SetMode.Request(base_mode=0, custom_mode=mode)
         future_set_mode = set_mode_client.call_async(set_mode_request)
-        rclpy.spin_until_future_complete(self.node, future_set_mode, timeout_sec=5)
+        self.node.executor.spin_until_future_complete(future_set_mode, timeout_sec=5)
         print(future_set_mode.result())
         if future_set_mode.result() is None:
             return False
@@ -131,7 +132,7 @@ class BaseControl:
         arming_client = self.node.create_client(CommandBool, "/mavros/cmd/arming")
         arming_request = CommandBool.Request(value=True)
         future_arming = arming_client.call_async(arming_request)
-        rclpy.spin_until_future_complete(self.node, future_arming, timeout_sec=5)
+        self.node.executor.spin_until_future_complete(future_arming, timeout_sec=5)
         print(future_arming.result())
         if future_arming.result() is None:
             return False
@@ -143,12 +144,14 @@ class BaseControl:
     def takeoff(self, alt=3.2):
         if type(alt) != float:
             alt = float(alt)
-        print('takeoff alt:', alt)
+        print("takeoff alt:", alt)
         takeoff_client = self.node.create_client(CommandTOL, "/mavros/cmd/takeoff")
         takeoff_request = CommandTOL.Request(altitude=alt)
         future_takeoff = takeoff_client.call_async(takeoff_request)
-        rclpy.spin_until_future_complete(self.node, future_takeoff, timeout_sec=5)
-        print(future_takeoff.result())
+        self.node.executor.spin_until_future_complete(future_takeoff, timeout_sec=5)
+        # print(future_takeoff.done())
+
+        # print(f'future_takeoff result: {future_takeoff.result()}')
         if future_takeoff.result() is None:
             return False
         if not future_takeoff.result().success:
@@ -160,7 +163,7 @@ class BaseControl:
         land_client = self.node.create_client(CommandTOL, "/mavros/cmd/land")
         land_request = CommandTOL.Request()
         future_land = land_client.call_async(land_request)
-        rclpy.spin_until_future_complete(self.node, future_land, timeout_sec=5)
+        self.node.executor.spin_until_future_complete(future_land, timeout_sec=5)
         print(future_land.result())
         if future_land.result() is None:
             return False
@@ -173,8 +176,6 @@ class BaseControl:
         rclpy.shutdown()
 
 
-
-
 if __name__ == "__main__":
     rclpy.init()
     node_main = rclpy.create_node("flight_control_test")
@@ -182,12 +183,5 @@ if __name__ == "__main__":
     while not controler.armAndTakeoff(alt=2):
         print("armAndTakeoff fail")
     time.sleep(5)
-    print('turn 90 degree')
-    controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
-    time.sleep(15)
-    print('turn 90 degree')
-    controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
-    time.sleep(15)
-    # controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
-    # controler.sendPositionTargetPosition(0, 0, 0, 90*3.14159/180)
-    controler.land()
+    print("turn 90 degree")
+    controler.sendPositionTargetPosition(0, 0, 0, 90 * 3.14159 / 180)

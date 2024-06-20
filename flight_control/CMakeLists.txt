@@ -42,10 +42,10 @@ install(TARGETS
 # Install Python modules
 ament_python_install_package(${PROJECT_NAME}_py)
 # Install Python executables
+file(GLOB SCRIPTS "scripts/*.py")
+
 install(PROGRAMS
-  scripts/aruco_detector_node.py
-  scripts/main_flight_node.py
-  scripts/client.py
+  ${SCRIPTS}
   DESTINATION lib/${PROJECT_NAME}
 )
 
