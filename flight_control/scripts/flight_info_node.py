@@ -9,6 +9,11 @@ class FlightInfoNode(Node):
         super().__init__("flight_info_node")
         self.declare_parameter("simulation", False)
         self.flight_info = FlightInfo(self)
+        self.create_timer(0.1, self.mainDetectCallback)
+    
+    def mainDetectCallback(self):
+        print(f'UWB coordinate: x={self.flight_info.uwb_coordinate.x}, y={self.flight_info.uwb_coordinate.y}, z={self.flight_info.uwb_coordinate.z}')
+        print(f'rangefinder distance: {self.flight_info.rangefinder_alt}')
 
 
 def main():
