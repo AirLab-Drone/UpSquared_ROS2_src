@@ -15,6 +15,7 @@ class MainFlightNode(Node):
     STOP_FLOW = 0
     FLOW1_FLOW = 1
     TEST_FLOW = 2
+    BIG_DRONE_TEST = 3
 
     # incoming message
     thermal_alert_msg = ThermalAlert()
@@ -75,8 +76,11 @@ class MainFlightNode(Node):
         # elif self.flow_mode == self.FLOW1_FLOW:
         #     flowSwitch(self.flow1, "flow1")
         #     return
-        elif self.flow_mode == self.TEST_FLOW:
-            flowSwitch(self.testFlow, "testFlow")
+        # elif self.flow_mode == self.TEST_FLOW:
+        #     flowSwitch(self.testFlow, "testFlow")
+        #     return
+        elif self.flow_mode == self.BIG_DRONE_TEST:
+            flowSwitch(self.big_drone_test, "big_drone_test")
             return
 
     # ---------------------------------------------------------------------------- #
@@ -134,13 +138,22 @@ class MainFlightNode(Node):
             return
         self.mission.landedOnPlatform()
         self.flow_mode = self.STOP_FLOW
+    
+    def big_drone_test(self):
+        move_duration = 5
+        start_time = time.time()
+        while time.time() - start_time < move_duration:
+            self.controller.sendPositionTargetVelocity(0.3, 0, 0, 0)
+        self.controller.setZeroVelocity()
+        self.flow_mode = self.STOP_FLOW
+
 
 
 def main():
     if not rclpy.ok():
         rclpy.init()
     flight_node = MainFlightNode()
-    flight_node.flow_mode = flight_node.TEST_FLOW
+    flight_node.flow_mode = flight_node.BIG_DRONE_TEST
     rclpy.spin(flight_node)
     flight_node.destroy_node()
     rclpy.shutdown()
