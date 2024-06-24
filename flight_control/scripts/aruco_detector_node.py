@@ -43,6 +43,7 @@ class ArucoDetector(Node):
             video_source = video_capture_from_ros2.VideoCaptureFromRos2(
                 "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
             )
+        print(f'cap: {self.cap}')
         if type(self.cap) is cv2.VideoCapture:
             self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
         self.frame = None
@@ -212,7 +213,7 @@ class ArucoDetector(Node):
 def main():
     if not rclpy.ok():
         rclpy.init()
-    video_source = cv2.VideoCapture(0)
+    # video_source = cv2.VideoCapture(0)
     aruco_detector = ArucoDetector(
         save_video=True,
         rotate_deg=90,

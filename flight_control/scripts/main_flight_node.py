@@ -106,7 +106,13 @@ class MainFlightNode(Node):
             print("takeoff fail")
             self.flow_mode = self.STOP_FLOW
             return
-        if not self.mission.navigateTo(2, 2, 0):
+        if not self.mission.navigateTo(10.530159552471765, 11.219568098628097, 0):
+            print("navigateTo fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        time.sleep(1)
+        # set home position
+        if not self.mission.navigateTo(10.974939259516479, 4.05861482263504, 0):
             print("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
@@ -128,7 +134,7 @@ class MainFlightNode(Node):
             self.flow_mode = self.STOP_FLOW
             return
         # set home position
-        if not self.mission.navigateTo(9.862989992694784, 5.38183444978942, 0):
+        if not self.mission.navigateTo(10.974939259516479, 4.05861482263504, 0):
             print("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
