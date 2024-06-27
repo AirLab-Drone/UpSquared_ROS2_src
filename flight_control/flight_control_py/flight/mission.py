@@ -201,7 +201,7 @@ class Mission:
         self,
         destination_x: float,
         destination_y: float,
-        destination_z: float = 0,
+        destination_z: float,
     ):
         """
         Function to navigate the drone to a specified location.
@@ -210,9 +210,9 @@ class Mission:
         The drone stops moving once it reaches the location.
 
         Args:
-            x (float): The x-coordinate of the location.
-            y (float): The y-coordinate of the location.
-            z (float): The z-coordinate of the location.
+            destination_x (float): The x-coordinate of the location.
+            destination_y (float): The y-coordinate of the location.
+            destination_z (float): The rangefinder altitude of the location.
 
         Returns:
             None
@@ -227,7 +227,7 @@ class Mission:
         bcn_orient_yaw = (
             self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
         )
-
+    
         # --------------------------------- function --------------------------------- #
         # 如果距離範圍在threshold內就回傳True
         def around(a, b, threshold=0.2):
@@ -253,6 +253,7 @@ class Mission:
             # 取的目前位置與目標位置的差距
             x_diff = destination_x - self.flight_info.uwb_coordinate.x
             y_diff = destination_y - self.flight_info.uwb_coordinate.y
+            z_diff = destination_z - self.flight_info.rangefinder_alt
             yaw_diff = math.atan2(y_diff, x_diff) * 180 / math.pi
             # 計算需要旋轉多少角度
             compass_heading = self.flight_info.compass_heading
@@ -266,13 +267,15 @@ class Mission:
             # 將須往前距離當作速度，並且限制最大速度
             move_forward = math.sqrt(x_diff**2 + y_diff**2)
             move_forward = abs(min(max(move_forward, -MAX_SPEED), MAX_SPEED))
+            # 高度移動距離，並且限制最大速度
+            move_z = min(max(z_diff, -MAX_SPEED), MAX_SPEED)
             self.node.get_logger().debug(
                 f"[Mission.navigateTo] rotate_deg: {rotate_deg}, move_forward: {move_forward}, move_yaw: {move_yaw}"
             )
             if abs(rotate_deg) < MAX_YAW:
-                self.controller.sendPositionTargetVelocity(move_forward, 0, 0, move_yaw)
+                self.controller.sendPositionTargetVelocity(move_forward, 0, move_z, move_yaw)
             else:
-                self.controller.sendPositionTargetVelocity(0, 0, 0, move_yaw)
+                self.controller.sendPositionTargetVelocity(0, 0, move_z, move_yaw)
         self.controller.setZeroVelocity()
         self.mode = self.WAIT_MODE
         return True
