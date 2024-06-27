@@ -213,7 +213,7 @@ class ArucoDetector(Node):
 def main():
     if not rclpy.ok():
         rclpy.init()
-    # video_source = cv2.VideoCapture(0)
+
     aruco_detector = ArucoDetector(
         save_video=True,
         rotate_deg=90,
