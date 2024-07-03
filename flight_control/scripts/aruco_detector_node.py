@@ -9,7 +9,7 @@ import rclpy
 from geometry_msgs.msg import PoseWithCovariance, Point, Quaternion
 
 from flight_control_py.aruco_visual.aruco import Aruco
-from flight_control_py.tool import video_capture_from_ros2
+from flight_control_py.tool.video_capture_from_ros2 import VideoCaptureFromRos2
 from aruco_msgs.msg import Marker, MarkerArray
 
 
@@ -36,14 +36,16 @@ class ArucoDetector(Node):
         super().__init__("aruco_detector")
         # --------------------------- ros2 global parameter -------------------------- #
         self.declare_parameter("simulation", False)
-        self.declare_parameter("marker_config_file", "")
+        self.declare_parameter("config_file", "")
         # ------------------------------ class variable ------------------------------ #
         # cv2 setup
-        self.cap = cv2.VideoCapture(0)
+        self.cap = None
         if self.get_parameter("simulation").get_parameter_value().bool_value:
-            video_source = video_capture_from_ros2.VideoCaptureFromRos2(
+            self.cap = VideoCaptureFromRos2(
                 "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
             )
+        else:
+            self.cap = cv2.VideoCapture(0)
         print(f"cap: {self.cap}")
         if type(self.cap) is cv2.VideoCapture:
             self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
@@ -53,17 +55,19 @@ class ArucoDetector(Node):
         self.start_time = self.get_clock().now()
         # real camera setup
         self.rotate_deg = rotate_deg
+        self.offset_x = offset_x
+        self.offset_y = offset_y
         # aruco setup
         self.arucoList = []
         config_file_path = (
-            self.get_parameter("marker_config_file").get_parameter_value().string_value
+            self.get_parameter("config_file").get_parameter_value().string_value
         )
         if config_file_path == "":
-            self.get_logger().error("Please set marker_config_file parameter")
+            self.get_logger().error("Please set config_file parameter")
             raise Exception("Configuration file not set")
         with open(config_file_path, "r") as f:
             config = yaml.safe_load(f)
-            self.marker_config = config["aruco_markers"]
+            self.markers_config = config["aruco_markers"]
         # aruco detector
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_50)
         aruco_params = cv2.aruco.DetectorParameters()
@@ -180,7 +184,7 @@ class ArucoDetector(Node):
         else:
             marker = closest_aruco.getCoordinateWithMarkerMsg()
             if self.rotate_deg != 0:
-                marker = self.rotateAndOffsetArucoCoordinate(marker, self.rotate_deg)
+                marker = self.rotateAndOffsetArucoCoordinate(marker, self.rotate_deg, self.offset_x, self.offset_y)
             self.cloest_aruco_publisher.publish(marker)
         print(
             f"x: {marker.x:.2f}, y: {marker.y:.2f}, z: {marker.z:.2f}, yaw: {marker.yaw:.2f}, pitch: {marker.pitch:.2f}, roll: {marker.roll:.2f}"
@@ -206,21 +210,14 @@ class ArucoDetector(Node):
         marker.y += offset_y
         return marker
 
-    def addNewAruco(self, id, corner):
+    def addNewAruco(self, marker_id, corner):
         for aruco in self.arucoList:
-            if aruco.id == id:
+            if aruco.id == marker_id:
                 return False
-        if id not in self.marker_config:
+        if marker_id not in self.markers_config:
             return False
-        aruco = Aruco(
-            id=id,
-            marker_lengeth=self.marker_config[id]["marker_lengeth"],
-            offset_x=self.marker_config[id]["offset_x"],
-            offset_y=self.marker_config[id]["offset_y"],
-            offset_z=self.marker_config[id]["offset_z"],
-            offset_yaw=self.marker_config[id]["offset_yaw"],
-        )
-        aruco.update(id, corner)
+        aruco = Aruco(marker_id=marker_id, marker_config=self.markers_config[f'{marker_id}'])
+        aruco.update(marker_id, corner)
         self.arucoList.append(aruco)
 
     def draw(self, x, y, z, yaw, id, frame, image_y):

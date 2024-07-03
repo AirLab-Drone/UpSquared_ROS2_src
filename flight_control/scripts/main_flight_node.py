@@ -24,6 +24,8 @@ class MainFlightNode(Node):
         # --------------------------------ros2 Parameters -------------------------------- #
         self.declare_parameter("simulation", False)
         self.declare_parameter("bcn_orient_yaw", 0.0)
+        self.declare_parameter("config_file", "")
+
         # 創建控制實例
         self.controller = FlightControl(self)
         self.flight_info = FlightInfo(self)

@@ -8,6 +8,7 @@ from flight_control_py.aruco_visual.aruco import Aruco
 from flight_control.srv import GetCloestAruco
 from aruco_msgs.msg import Marker
 import time
+import yaml
 
 
 class Mission:
@@ -35,12 +36,22 @@ class Mission:
         self.sub = self.node.create_subscription(
             Marker, "cloest_aruco", self.cloest_aruco_callback, 10
         )
+        # aruco marker config
+        config_file_path = (
+            self.node.get_parameter("config_file").get_parameter_value().string_value
+        )
+        if config_file_path == "":
+            self.node.get_logger().error("Please set config_file parameter")
+            raise Exception("Configuration file not set")
+        with open(config_file_path, "r") as f:
+            config = yaml.safe_load(f)
+            self.markers_config = config["aruco_markers"]
 
     # ---------------------------------------------------------------------------- #
     #                                   callback                                   #
     # ---------------------------------------------------------------------------- #
     def cloest_aruco_callback(self, msg):
-        self.cloest_aruco = Aruco(msg.id).fromMsgMarker2Aruco(msg)
+        self.cloest_aruco = Aruco(marker_id=msg.id, marker_config=self.markers_config[f'{msg.id}']).fromMsgMarker2Aruco(msg)
 
     # ---------------------------------------------------------------------------- #
     #                                   Function                                   #
@@ -128,7 +139,7 @@ class Mission:
                 # self.controller.setZeroVelocity()
                 continue
             marker_x, marker_y, marker_z, marker_yaw, _, _ = (
-                closest_aruco.getCoordinate()
+                closest_aruco.get_coordinate_with_offset()
             )
             if (
                 marker_x is None
@@ -148,7 +159,7 @@ class Mission:
             last_moveup_time = rclpy.clock.Clock().now()
             # PID control
             diffrent_distance = math.sqrt(marker_x**2 + marker_y**2)
-            # imit move_x and move_y and move_yaw #
+            # limit move_x and move_y and move_yaw #
             move_x = min(max(-marker_y, -MAX_SPEED), MAX_SPEED)
             move_y = min(max(-marker_x, -MAX_SPEED), MAX_SPEED)
             if (360 - marker_yaw) < marker_yaw:
