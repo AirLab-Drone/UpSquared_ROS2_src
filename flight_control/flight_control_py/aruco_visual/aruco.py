@@ -32,12 +32,6 @@ class LimitedList:
 
 class Aruco:
     mtx = np.array(
-        # [[776.31000562, 0, 327.96638128], [0, 775.07173891, 179.57551958], [0, 0, 1]]
-        # [
-        #     [405.19622214, 0.00000000e00, 340],
-        #     [0.00000000e00, 405.19622214, 240],
-        #     [0.00000000e00, 0.00000000e00, 1.00000000e00],
-        # ]
         [
             [340.74031116, 0.0, 283.37463566],
             [0.0, 340.06602771, 228.07711583],
@@ -45,24 +39,17 @@ class Aruco:
         ]
     )
     dist = np.array(
-        # [
-        #     [
-        #         8.29378271e-02,
-        #         1.26989092e-01,
-        #         3.86532147e-03,
-        #         1.18462078e-03,
-        #         -1.87627090e00,
-        #     ]
-        # ]
-        # [[0, 0, 0, 0, 0]]
         [[0.13218569, -0.30664348, 0.00281174, -0.02061007, 0.11064283]]
     )
-    markerLength = 0.16  # unit: meter
     limit_list_size = 3
 
-    # markerLength = 0.0385
-    def __init__(self, id) -> None:
+    def __init__(self, id, marker_lengeth, offset_x=0, offset_y=0, offset_z=0, marker_yaw=0) -> None:
         self.id = id
+        self.markerLength = marker_lengeth # unit: meter
+        self.offset_x = offset_x
+        self.offset_y = offset_y
+        self.offset_z = offset_z
+        self.marker_yaw = marker_yaw
         self.x_list = LimitedList(self.limit_list_size)
         self.y_list = LimitedList(self.limit_list_size)
         self.z_list = LimitedList(self.limit_list_size)
@@ -118,6 +105,12 @@ class Aruco:
         yaw = self.yaw_list.calculate_median()
         pitch = self.pitch_list.calculate_median()
         roll = self.roll_list.calculate_median()
+        # ---------------------------------- offset ---------------------------------- #
+        x -= self.offset_x
+        y -= self.offset_y
+        z -= self.offset_z
+        yaw -= self.marker_yaw
+
         return x, y, z, yaw, pitch, roll
 
     def getCoordinateWithMarkerMsg(self):

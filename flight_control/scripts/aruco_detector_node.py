@@ -2,24 +2,21 @@
 import math
 import numpy as np
 import cv2
+import yaml
 from rclpy.node import Node
 import rclpy
+
+from geometry_msgs.msg import PoseWithCovariance, Point, Quaternion
+
 from flight_control_py.aruco_visual.aruco import Aruco
 from flight_control_py.tool import video_capture_from_ros2
 from aruco_msgs.msg import Marker, MarkerArray
-from flight_control.srv import GetCloestAruco
-
-from aruco_msgs.msg import Marker
-from geometry_msgs.msg import PoseWithCovariance, Point, Quaternion
-import numpy as np
-import cv2
-import math
-import rclpy
 
 
 class ArucoDetector(Node):
     """
     坐標系:marker相對於相機, x: 向右為正, y: 向後為正, z: 遠離相機為正, marker順時針旋轉為正
+    marker offset: marker相對於降落點的偏移量，marker向右偏移為x正，marker向後偏移為y正，marker向下（遠離相機）偏移為z正，marker順時針旋轉為正
     """
 
     # #-----------------setting-----------------
@@ -37,21 +34,37 @@ class ArucoDetector(Node):
         offset_y: float = 0,
     ):
         super().__init__("aruco_detector")
+        # --------------------------- ros2 global parameter -------------------------- #
         self.declare_parameter("simulation", False)
+        self.declare_parameter("marker_config_file", "")
+        # ------------------------------ class variable ------------------------------ #
+        # cv2 setup
         self.cap = cv2.VideoCapture(0)
         if self.get_parameter("simulation").get_parameter_value().bool_value:
             video_source = video_capture_from_ros2.VideoCaptureFromRos2(
                 "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
             )
-        print(f'cap: {self.cap}')
+        print(f"cap: {self.cap}")
         if type(self.cap) is cv2.VideoCapture:
             self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
         self.frame = None
-        self.arucoList = []
+        # FPS debug
         self.count = 0
         self.start_time = self.get_clock().now()
+        # real camera setup
         self.rotate_deg = rotate_deg
-        timer_period = 0.05  # seconds
+        # aruco setup
+        self.arucoList = []
+        config_file_path = (
+            self.get_parameter("marker_config_file").get_parameter_value().string_value
+        )
+        if config_file_path == "":
+            self.get_logger().error("Please set marker_config_file parameter")
+            raise Exception("Configuration file not set")
+        with open(config_file_path, "r") as f:
+            config = yaml.safe_load(f)
+            self.marker_config = config["aruco_markers"]
+        # aruco detector
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_50)
         aruco_params = cv2.aruco.DetectorParameters()
         self.detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
@@ -67,11 +80,11 @@ class ArucoDetector(Node):
                 30.0,
                 (frame.shape[1], frame.shape[0]),
             )
-        # ---------------------------------- service --------------------------------- #
         # -------------------------------- publishers -------------------------------- #
         self.aruco_publisher = self.create_publisher(MarkerArray, "aruco_markers", 10)
         self.cloest_aruco_publisher = self.create_publisher(Marker, "cloest_aruco", 10)
         # ------------------------------- start detect ------------------------------- #
+        timer_period = 0.05  # seconds
         self.create_timer(timer_period, self.run)
         self.create_timer(timer_period, self.get_cloest_aruco_callback)
 
@@ -197,7 +210,16 @@ class ArucoDetector(Node):
         for aruco in self.arucoList:
             if aruco.id == id:
                 return False
-        aruco = Aruco(id)
+        if id not in self.marker_config:
+            return False
+        aruco = Aruco(
+            id=id,
+            marker_lengeth=self.marker_config[id]["marker_lengeth"],
+            offset_x=self.marker_config[id]["offset_x"],
+            offset_y=self.marker_config[id]["offset_y"],
+            offset_z=self.marker_config[id]["offset_z"],
+            offset_yaw=self.marker_config[id]["offset_yaw"],
+        )
         aruco.update(id, corner)
         self.arucoList.append(aruco)
 
