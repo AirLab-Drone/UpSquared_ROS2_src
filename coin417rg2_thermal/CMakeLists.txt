@@ -17,6 +17,34 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 
+
+# ------------------------------ 根據系統架構選擇不同的編譯配置 ----------------------------- #
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+  message(STATUS "Target system is x86_64")
+  # 在這裡添加 x64 特定的編譯配置
+  link_directories(lib/x86_64)
+  include_directories(include/coin417rg2_thermal/x86_64)
+
+
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm" OR CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+  message(STATUS "Target system is ARM or AARCH64")
+  # 在這裡添加 ARM 或 AARCH64 特定的編譯配置
+  link_directories(lib/arm)
+  include_directories(include/coin417rg2_thermal/arm)
+
+  file(GLOB ARM_LIBRARIES "lib/arm/*.so")
+  foreach(lib ${ARM_LIBRARIES})
+    message(STATUS "Found library: ${lib}")
+  endforeach()
+
+
+
+else()
+  message(STATUS "Unknown processor architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+endif()
+
+
+
 # ---------------------------------- 找套件 --------------------------------- #
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -28,8 +56,7 @@ find_package(OpenCV REQUIRED)
 
 
 
-link_directories(lib)
-include_directories(include/coin417rg2_thermal)
+
 
 
 
@@ -47,11 +74,13 @@ include_directories(include/coin417rg2_thermal)
 # /* ----------------------------------- 測試用 ---------------------------------- */
 add_executable(test_node src/test.cpp)
 target_link_libraries(test_node 
+    ${ARM_LIBRARIES}
     GuideUSBCamera -ldl
     GuideMT -ldl
     pthread
     m
     udev
+    
 )
 ament_target_dependencies(test_node 
     rclcpp 
@@ -65,6 +94,7 @@ ament_target_dependencies(test_node
 # /* -------------------------------- ros2 node ------------------------------- */
 add_executable(COIN417RG2_ros2_node src/COIN417RG2_ros2_node.cpp)
 target_link_libraries(COIN417RG2_ros2_node 
+    ${ARM_LIBRARIES}
     GuideUSBCamera -ldl
     GuideMT -ldl
     pthread
@@ -80,6 +110,9 @@ ament_target_dependencies(COIN417RG2_ros2_node
     OpenCV)
 
 
+
+
+
 install(TARGETS
   test_node
   COIN417RG2_ros2_node
@@ -89,6 +122,7 @@ install(TARGETS
 
 install(DIRECTORY
   launch
+  lib
   DESTINATION share/${PROJECT_NAME}/
 )
 

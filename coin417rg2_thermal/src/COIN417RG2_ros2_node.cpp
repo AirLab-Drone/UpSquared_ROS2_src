@@ -376,13 +376,13 @@ std::string Find_Thermal_Device() {
 
     struct udev *udev = udev_new();
     if (!udev) {
-        std::cerr << "无法初始化 udev" << std::endl;
+        std::cerr << "Failed to initialize udev." << std::endl;
         return "";
     }
 
     struct udev_enumerate *enumerate = udev_enumerate_new(udev);
     if (!enumerate) {
-        std::cerr << "无法创建 udev 枚举器" << std::endl;
+        std::cerr << "Failed to create udev enumerator." << std::endl;
         udev_unref(udev);
         return "";
     }
@@ -406,8 +406,8 @@ std::string Find_Thermal_Device() {
         if (deviceName) {
             const char *devicePath = udev_device_get_devnode(device);
             if (devicePath && std::string(deviceName).find("video") != std::string::npos) {
-                std::cout << "设备名称: " << deviceName << std::endl;
-                std::cout << "设备路径: " << devicePath << std::endl;
+                std::cout << "Device Name: " << deviceName << std::endl;
+                std::cout << "Device Path: " << devicePath << std::endl;
                 if (maxVideoPath.empty() || comparePaths(devicePath, maxVideoPath)) {
                     maxVideoPath = devicePath;
                 }
@@ -422,7 +422,7 @@ std::string Find_Thermal_Device() {
         return maxVideoPath;
     }
 
-    std::cout << "未找到 Cypress Semiconductor Corp. GuideCamera 的视频设备" << std::endl;
+    std::cout << "Device: Cypress Semiconductor Corp. GuideCamera was not found :(" << std::endl;
 
     udev_enumerate_unref(enumerate);
     udev_unref(udev);
