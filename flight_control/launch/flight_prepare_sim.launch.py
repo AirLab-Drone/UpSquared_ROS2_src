@@ -15,35 +15,31 @@ from ament_index_python import get_package_share_directory
 
 def changeMavrosPublishRate(msg_id):
     return TimerAction(
-                period=10.0,
-                actions=[
-                    ExecuteProcess(
-                        cmd=[
-                            "ros2",
-                            "run",
-                            "mavros",
-                            "mav",
-                            "sys",
-                            "message-interval",
-                            "--id",
-                            f"{msg_id}",
-                            "--rate",
-                            "100",
-                        ],
-                        output="screen",
-                    )
+        period=10.0,
+        actions=[
+            ExecuteProcess(
+                cmd=[
+                    "ros2",
+                    "run",
+                    "mavros",
+                    "mav",
+                    "sys",
+                    "message-interval",
+                    "--id",
+                    f"{msg_id}",
+                    "--rate",
+                    "100",
                 ],
+                output="screen",
             )
+        ],
+    )
+
 
 def generate_launch_description():
     delay_time = 10.0
     return LaunchDescription(
         [
-            # Node(
-            #     package="flight_control",
-            #     executable="aruco_detector_node.py",
-            #     output="screen",
-            # ),
             IncludeLaunchDescription(
                 AnyLaunchDescriptionSource(
                     os.path.join(
@@ -55,7 +51,16 @@ def generate_launch_description():
                 }.items(),
             ),
             ExecuteProcess(
-                cmd=["gz", "sim", "-v4", "-r", "iris_aruco.sdf"], output="screen"
+                cmd=[
+                    "gz",
+                    "sim",
+                    "-v4",
+                    "-r",
+                    "iris_aruco.sdf",
+                    "--render-engine",
+                    "ogre",
+                ],
+                output="screen",
             ),
             ExecuteProcess(
                 cmd=[

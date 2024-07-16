@@ -3,6 +3,9 @@ opencv-python
 opencv-contrib-python  
 scipy  
 cv_bridge  
+```
+pip install opencv-python opencv-contrib-python scipy cv_bridge
+```
 mavros  
 ```
 sudo apt install ros-humble-mavros ros-humble-mavros-extras

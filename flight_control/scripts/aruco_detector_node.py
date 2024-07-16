@@ -41,11 +41,11 @@ class ArucoDetector(Node):
         # cv2 setup
         self.cap = None
         if self.get_parameter("simulation").get_parameter_value().bool_value:
-            self.cap = VideoCaptureFromRos2(
-                "/world/iris_runway/model/iris_with_ardupilot_camera/model/camera/link/camera_link/sensor/camera1/image"
-            )
+            self.cap = VideoCaptureFromRos2("/drone_camera")
         else:
+            self.get_logger().info("connecting to camera")
             self.cap = cv2.VideoCapture(0)
+            self.get_logger().info("connected to camera")
         print(f"cap: {self.cap}")
         if type(self.cap) is cv2.VideoCapture:
             self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
@@ -121,7 +121,7 @@ class ArucoDetector(Node):
             marker_array_temp.header.frame_id = "aruco_list"
             marker_array_temp.header.stamp = rclpy.clock.Clock().now().to_msg()
             self.aruco_publisher.publish(marker_array_temp)
-            # self.debug()
+            self.debug()
 
     def stop(self):
         self.is_running = False
@@ -134,13 +134,16 @@ class ArucoDetector(Node):
         count_fps = 30
         if self.count % count_fps == 0:
             end_time = self.get_clock().now()
-            print(f"FPS: {count_fps / ((end_time - self.start_time).nanoseconds*1e-9)}")
+            self.get_logger().info(
+                f"FPS: {count_fps / ((end_time - self.start_time).nanoseconds*1e-9)}"
+            )
             # for aruco in arucoList:
             #     print(aruco.id,aruco.getCoordinate())
             self.start_time = self.get_clock().now()
         # ------------------------------- aruco status ------------------------------- #
-        if len(self.arucoList) > 0:
-            print(len(self.arucoList[0].x_list.items))
+        cv2.imshow("frame", self.frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            self.stop()
 
     def get_cloest_aruco_callback(self):
         closest_aruco = None
@@ -184,9 +187,11 @@ class ArucoDetector(Node):
         else:
             marker = closest_aruco.getCoordinateWithMarkerMsg()
             if self.rotate_deg != 0:
-                marker = self.rotateAndOffsetArucoCoordinate(marker, self.rotate_deg, self.offset_x, self.offset_y)
+                marker = self.rotateAndOffsetArucoCoordinate(
+                    marker, self.rotate_deg, self.offset_x, self.offset_y
+                )
             self.cloest_aruco_publisher.publish(marker)
-        print(
+        self.get_logger().info(
             f"x: {marker.x:.2f}, y: {marker.y:.2f}, z: {marker.z:.2f}, yaw: {marker.yaw:.2f}, pitch: {marker.pitch:.2f}, roll: {marker.roll:.2f}"
         )
 
@@ -214,9 +219,11 @@ class ArucoDetector(Node):
         for aruco in self.arucoList:
             if aruco.id == marker_id:
                 return False
-        if marker_id not in self.markers_config:
+        if str(marker_id) not in self.markers_config:
             return False
-        aruco = Aruco(marker_id=marker_id, marker_config=self.markers_config[f'{marker_id}'])
+        aruco = Aruco(
+            marker_id=marker_id, marker_config=self.markers_config[f"{marker_id}"]
+        )
         aruco.update(marker_id, corner)
         self.arucoList.append(aruco)
 

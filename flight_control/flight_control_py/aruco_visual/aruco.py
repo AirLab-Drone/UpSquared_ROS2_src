@@ -42,12 +42,12 @@ class Aruco:
     limit_list_size = 3
 
     def __init__(self, marker_id, marker_config) -> None:
-        self.marker_id = marker_id
-        self.markerLength = marker_config["marker_lengeth"]  # unit: meter
+        self.id = marker_id
+        self.markerLength = marker_config["marker_length"]  # unit: meter
         self.offset_x = marker_config["offset_x"]
         self.offset_y = marker_config["offset_y"]
         self.offset_z = marker_config["offset_z"]
-        self.marker_yaw = marker_config["offset_yaw"]
+        self.marker_yaw = marker_config["marker_yaw"]
         self.x_list = LimitedList(self.limit_list_size)
         self.y_list = LimitedList(self.limit_list_size)
         self.z_list = LimitedList(self.limit_list_size)
@@ -58,7 +58,7 @@ class Aruco:
         self.tvec = None
 
     def checkInList(self, ids):
-        if ids is None or self.marker_id not in ids:
+        if ids is None or self.id not in ids:
             self.x_list.pop_element_and_getmedian()
             self.y_list.pop_element_and_getmedian()
             self.z_list.pop_element_and_getmedian()
@@ -82,7 +82,7 @@ class Aruco:
         return x, y, z, yaw, pitch, roll
 
     def update(self, marker_id, corner):
-        if self.marker_id != marker_id:
+        if self.id != marker_id:
             return
         x, y, z, yaw, pitch, roll = self.estimatePoseSingleMarkers(corner)
         self.x_list.add_element(x)
@@ -140,7 +140,7 @@ class Aruco:
         marker = Marker()
         marker.header.frame_id = "aruco"
         marker.header.stamp = rclpy.clock.Clock().now().to_msg()
-        marker.id = int(self.marker_id)
+        marker.id = int(self.id)
         marker.x = x
         marker.y = y
         marker.z = z
@@ -222,7 +222,7 @@ class Aruco:
         """
         if marker.confidence < 0.5:
             return None
-        self.marker_id = marker.id
+        self.id = marker.id
         self.x_list.add_element(marker.x)
         self.y_list.add_element(marker.y)
         self.z_list.add_element(marker.z)
