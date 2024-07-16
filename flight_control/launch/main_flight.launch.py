@@ -6,15 +6,16 @@ from launch.substitutions import LaunchConfiguration
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 
 def launch_setup(context, *args, **kwargs):
-    parm_simulation = LaunchConfiguration('simulation').perform(context)
-    
+    parm_simulation_str = LaunchConfiguration('simulation').perform(context)
+    parm_simulation = parm_simulation_str.lower() == 'true'  # 将字符串解析为布尔值
+
     aruco_markers_file = os.path.join(
         get_package_share_directory('flight_control'),
         'config',
         'aruco_markers.yaml',
     )
     
-    if parm_simulation == True:
+    if parm_simulation:
         # 在这里添加你想在 simulation 模式下执行的操作
         print("Simulation mode is enabled")
     else:
@@ -39,7 +40,7 @@ def generate_launch_description():
         [
             DeclareLaunchArgument(
                 'simulation',
-                default_value="False",
+                default_value='False',  # 设置默认值为字符串形式
                 description='simulation mode',
             ),
             OpaqueFunction(function=launch_setup),

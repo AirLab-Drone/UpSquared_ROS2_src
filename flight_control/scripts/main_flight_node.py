@@ -61,7 +61,7 @@ class MainFlightNode(Node):
                 self.flow_thread.start()
                 return
             if self.flow_thread.is_alive() and self.flow_thread.name == target_name:
-                print(f"{target_name} is running")
+                self.get_logger().info(f"{target_name} is running")
                 return
             if self.flow_thread.is_alive() and self.flow_thread.name != target_name:
                 self.mission.stopMission()
@@ -72,7 +72,7 @@ class MainFlightNode(Node):
         # 判斷使用哪個流程
         if self.flow_mode == self.STOP_FLOW:
             self.mission.stopMission()
-            print("stop flow")
+            self.get_logger().info("stop flow")
             return
         # elif self.flow_mode == self.FLOW1_FLOW:
         #     flowSwitch(self.flow1, "flow1")
@@ -88,7 +88,7 @@ class MainFlightNode(Node):
         """
         火源警報的callback函數
         """
-        # print(f"thermal alert: {msg}")
+        # self.get_logger().info(f"thermal alert: {msg}")
         # 如果溫度小於60度，則不執行
         if msg.temperature < 60:
             return
@@ -101,23 +101,26 @@ class MainFlightNode(Node):
 
     def testFlow(self):
         if not self.mission.simpleLanding():
-            print("landing fail")
+            self.get_logger().info("landing fail")
             self.flow_mode = self.STOP_FLOW
             return
+        self.get_logger().info('takeoff')
         if not self.mission.simpleTakeoff():
-            print("takeoff fail")
+            self.get_logger().info("takeoff fail")
             self.flow_mode = self.STOP_FLOW
             return
         # if not self.mission.navigateTo(5.127, 2.235, 2):
-        #     print("navigateTo fail")
+        #     self.get_logger().info("navigateTo fail")
         #     self.flow_mode = self.STOP_FLOW
         #     return
         # time.sleep(1)
         # set home position
-        # if not self.mission.navigateTo(0.0, 0.0, 2):
-        #     print("navigateTo fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
+        self.get_logger().info('go to 0 0 2')
+        if not self.mission.navigateTo(0.0, 0.0, 2):
+            self.get_logger().info("navigateTo fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        self.get_logger().info('land to platform')
         self.mission.landedOnPlatform()
         self.flow_mode = self.STOP_FLOW
 
@@ -127,18 +130,18 @@ class MainFlightNode(Node):
         起飛 --> 飛到指定位置 --> 飛回原點 --> 降落
         """
         if not self.mission.simpleTakeoff():
-            print("takeoff fail")
+            self.get_logger().info("takeoff fail")
             self.flow_mode = self.STOP_FLOW
             return
         if not self.mission.navigateTo(
             self.thermal_alert_msg.x, self.thermal_alert_msg.y, 0, 0
         ):
-            print("navigateTo fail")
+            self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
         # set home position
         if not self.mission.navigateTo(10.974939259516479, 4.05861482263504, 0):
-            print("navigateTo fail")
+            self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
         self.mission.landedOnPlatform()
