@@ -56,7 +56,7 @@ def generate_launch_description():
                     "sim",
                     "-v4",
                     "-r",
-                    "iris_aruco.sdf",
+                    "double_aruco.sdf",
                     "--render-engine",
                     "ogre",
                 ],
