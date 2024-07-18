@@ -15,7 +15,7 @@ from ament_index_python import get_package_share_directory
 
 def changeMavrosPublishRate(msg_id):
     return TimerAction(
-        period=10.0,
+        period=15.0,
         actions=[
             ExecuteProcess(
                 cmd=[
@@ -37,7 +37,6 @@ def changeMavrosPublishRate(msg_id):
 
 
 def generate_launch_description():
-    delay_time = 10.0
     return LaunchDescription(
         [
             IncludeLaunchDescription(
@@ -62,22 +61,27 @@ def generate_launch_description():
                 ],
                 output="screen",
             ),
-            ExecuteProcess(
-                cmd=[
-                    "sim_vehicle.py",
-                    "-v",
-                    "ArduCopter",
-                    "-f",
-                    "gazebo-iris",
-                    "--model",
-                    "JSON",
-                    "--out",
-                    "127.0.0.1:14551",
-                    "--map",
-                    "--console",
-                    "--mavproxy-args=--streamrate=-1",
+            TimerAction(
+                period=10.0,
+                actions=[
+                    ExecuteProcess(
+                        cmd=[
+                            "sim_vehicle.py",
+                            "-v",
+                            "ArduCopter",
+                            "-f",
+                            "gazebo-iris",
+                            "--model",
+                            "JSON",
+                            "--out",
+                            "127.0.0.1:14551",
+                            "--map",
+                            "--console",
+                            "--mavproxy-args=--streamrate=-1",
+                        ],
+                        output="screen",
+                    )
                 ],
-                output="screen",
             ),
             changeMavrosPublishRate(24),
             changeMavrosPublishRate(33),
