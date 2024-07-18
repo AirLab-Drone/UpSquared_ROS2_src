@@ -115,7 +115,7 @@ class Mission:
             return False
         self.__setMode(self.LANDIND_ON_PLATFORM_MODE)
         # --------------------------------- variable --------------------------------- #
-        LOWEST_HEIGHT = 0.3  # 最低可看到aruco的高度 單位:公尺
+        LOWEST_HEIGHT = 0.2  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
         MAX_YAW = 15 * 3.14 / 180  # 15度
         DOWNWARD_SPEED = -0.2  # the distance to move down
