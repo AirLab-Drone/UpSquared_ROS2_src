@@ -88,7 +88,7 @@ class ArucoDetector(Node):
         self.aruco_publisher = self.create_publisher(MarkerArray, "aruco_markers", 10)
         self.cloest_aruco_publisher = self.create_publisher(Marker, "cloest_aruco", 10)
         # ------------------------------- start detect ------------------------------- #
-        timer_period = 0.05  # seconds
+        timer_period = 0.1  # seconds
         self.create_timer(timer_period, self.run)
         self.create_timer(timer_period, self.get_cloest_aruco_callback)
 
@@ -192,7 +192,7 @@ class ArucoDetector(Node):
                 )
             self.cloest_aruco_publisher.publish(marker)
         self.get_logger().info(
-            f"x: {marker.x:.2f}, y: {marker.y:.2f}, z: {marker.z:.2f}, yaw: {marker.yaw:.2f}, pitch: {marker.pitch:.2f}, roll: {marker.roll:.2f}"
+            f"id: {marker.id} x: {marker.x:.2f}, y: {marker.y:.2f}, z: {marker.z:.2f}, yaw: {marker.yaw:.2f}, pitch: {marker.pitch:.2f}, roll: {marker.roll:.2f}"
         )
 
     def rotateAndOffsetArucoCoordinate(

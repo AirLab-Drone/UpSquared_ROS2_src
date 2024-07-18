@@ -115,7 +115,7 @@ class Mission:
             return False
         self.__setMode(self.LANDIND_ON_PLATFORM_MODE)
         # --------------------------------- variable --------------------------------- #
-        LOWEST_HEIGHT = 0.7  # 最低可看到aruco的高度 單位:公尺
+        LOWEST_HEIGHT = 0.3  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
         MAX_YAW = 15 * 3.14 / 180  # 15度
         DOWNWARD_SPEED = -0.2  # the distance to move down
@@ -177,13 +177,13 @@ class Mission:
                     f"x:{marker_x}, y:{marker_y}, z:{marker_z}, yaw:{marker_yaw}, high:{self.flight_info.rangefinder_alt}"
                 )
                 break
-            self.controller.sendPositionTargetPosition(0, 0, 0, yaw=move_yaw)
+            # self.controller.sendPositionTargetPosition(0, 0, 0, yaw=move_yaw)
             if self.flight_info.rangefinder_alt > LOWEST_HEIGHT:
                 self.controller.sendPositionTargetVelocity(
                     move_x,
                     move_y,
                     DOWNWARD_SPEED,
-                    0,
+                    move_yaw,
                 )
             else:
                 # when height is lower than lowest_high, stop moving down
@@ -191,7 +191,7 @@ class Mission:
                     move_x,
                     move_y,
                     0,
-                    0,
+                    move_yaw,
                 )
             print(
                 f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{diffrent_distance:.2f}"
