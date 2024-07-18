@@ -6,8 +6,8 @@ aruco_markers:
     offset_z: 0
     marker_yaw: 0
     marker_length: 0.16
-  "1":
-    aruco_id: 1
+  "5":
+    aruco_id: 5
     offset_x: 0
     offset_y: 0
     offset_z: 0
