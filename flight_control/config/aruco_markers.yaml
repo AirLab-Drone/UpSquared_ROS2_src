@@ -1,18 +1,11 @@
 aruco_markers:
   "0":
     aruco_id: 0
-    offset_x: 0.2
-    offset_y: 0
+    offset_x: 0
+    offset_y: -0.12
     offset_z: 0
     marker_yaw: 0
     marker_length: 0.16
-  "5":
-    aruco_id: 5
-    offset_x: 0
-    offset_y: 0
-    offset_z: 0
-    marker_yaw: 0
-    marker_length: 0.1
   "6":
     aruco_id: 6
     offset_x: 0

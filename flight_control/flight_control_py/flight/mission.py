@@ -51,7 +51,9 @@ class Mission:
     #                                   callback                                   #
     # ---------------------------------------------------------------------------- #
     def cloest_aruco_callback(self, msg):
-        self.cloest_aruco = Aruco(marker_id=msg.id, marker_config=self.markers_config[f'{msg.id}']).fromMsgMarker2Aruco(msg)
+        self.cloest_aruco = Aruco(
+            marker_id=msg.id, marker_config=self.markers_config[f"{msg.id}"]
+        ).fromMsgMarker2Aruco(msg)
 
     # ---------------------------------------------------------------------------- #
     #                                   Function                                   #
@@ -117,12 +119,13 @@ class Mission:
         # --------------------------------- variable --------------------------------- #
         LOWEST_HEIGHT = 0.2  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
-        MAX_YAW = 15 * 3.14 / 180  # 15度
-        DOWNWARD_SPEED = -0.2  # the distance to move down
+        MAX_YAW = 15 * 3.14 / 180  # 15度/s
+        DOWNWARD_SPEED = -0.05  # the distance to move down,必需要為負
         last_moveup_time = rclpy.clock.Clock().now()
         # ------------------------------- start mission ------------------------------ #
         while True:
             # 設定中斷點，如果不是降落模式就直接結束
+            # todo 檢查thread結束後是否會釋放記憶體
             if self.mode != self.LANDIND_ON_PLATFORM_MODE:
                 self.controller.setZeroVelocity()
                 return False
@@ -133,14 +136,18 @@ class Mission:
                     seconds=0.5
                 ):
                     if self.flight_info.rangefinder_alt < 3:
+                        # todo 若看不到aruco水平飛到UWB home position
                         # print('move up')
-                        self.controller.sendPositionTargetVelocity(0, 0, 0.2, 0)
+                        self.controller.sendPositionTargetVelocity(
+                            0, 0, -DOWNWARD_SPEED, 0
+                        )
                         last_moveup_time = rclpy.clock.Clock().now()
                 # self.controller.setZeroVelocity()
                 continue
             marker_x, marker_y, marker_z, marker_yaw, _, _ = (
                 closest_aruco.get_coordinate_with_offset()
             )
+            # 處理
             if (
                 marker_x is None
                 or marker_y is None
@@ -150,18 +157,26 @@ class Mission:
                 if rclpy.clock.Clock().now() - last_moveup_time > rclpy.time.Duration(
                     seconds=0.5
                 ):
+                    # todo 若看不到aruco水平飛到UWB home position
                     if self.flight_info.rangefinder_alt < 3:
                         # print('move up')
-                        self.controller.sendPositionTargetVelocity(0, 0, 0.2, 0)
+                        self.controller.sendPositionTargetVelocity(
+                            0, 0, -DOWNWARD_SPEED, 0
+                        )
                         last_moveup_time = rclpy.clock.Clock().now()
                 # self.controller.setZeroVelocity()
                 continue
             last_moveup_time = rclpy.clock.Clock().now()
-            # PID control
+            # 無人機和降落點的水平誤差
             diffrent_distance = math.sqrt(marker_x**2 + marker_y**2)
             # limit move_x and move_y and move_yaw #
-            move_x = min(max(-marker_y, -MAX_SPEED), MAX_SPEED)
-            move_y = min(max(-marker_x, -MAX_SPEED), MAX_SPEED)
+            # todo改成以無人機為準的座標系
+            # todo加入PID控制
+            # move_x = min(max(-marker_y, -MAX_SPEED), MAX_SPEED)
+            # move_y = min(max(-marker_x, -MAX_SPEED), MAX_SPEED)
+            max_speed_temp = min(max(diffrent_distance,-MAX_SPEED),MAX_SPEED)
+            move_x = -marker_y / diffrent_distance * max_speed_temp
+            move_y = -marker_x / diffrent_distance * max_speed_temp
             if (360 - marker_yaw) < marker_yaw:
                 marker_yaw = -marker_yaw
             move_yaw = min(max(-marker_yaw * 3.14 / 180, -MAX_YAW), MAX_YAW)
@@ -238,7 +253,7 @@ class Mission:
         bcn_orient_yaw = (
             self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
         )
-    
+
         # --------------------------------- function --------------------------------- #
         # 如果距離範圍在threshold內就回傳True
         def around(a, b, threshold=0.2):
@@ -284,7 +299,9 @@ class Mission:
                 f"[Mission.navigateTo] rotate_deg: {rotate_deg}, move_forward: {move_forward}, move_yaw: {move_yaw}"
             )
             if abs(rotate_deg) < MAX_YAW:
-                self.controller.sendPositionTargetVelocity(move_forward, 0, move_z, move_yaw)
+                self.controller.sendPositionTargetVelocity(
+                    move_forward, 0, move_z, move_yaw
+                )
             else:
                 self.controller.sendPositionTargetVelocity(0, 0, move_z, move_yaw)
         self.controller.setZeroVelocity()

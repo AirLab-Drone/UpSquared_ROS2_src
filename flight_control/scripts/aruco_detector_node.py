@@ -121,7 +121,7 @@ class ArucoDetector(Node):
             marker_array_temp.header.frame_id = "aruco_list"
             marker_array_temp.header.stamp = rclpy.clock.Clock().now().to_msg()
             self.aruco_publisher.publish(marker_array_temp)
-            self.debug()
+            # self.debug()
 
     def stop(self):
         self.is_running = False

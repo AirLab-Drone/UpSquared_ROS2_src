@@ -100,27 +100,29 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        if not self.mission.simpleLanding():
-            self.get_logger().info("landing fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info('takeoff')
-        if not self.mission.simpleTakeoff():
-            self.get_logger().info("takeoff fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        if not self.mission.navigateTo(5.127, 2.235, 2):
-            self.get_logger().info("navigateTo fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        time.sleep(1)
-        # set home position
-        self.get_logger().info('go to 0 0 2')
-        if not self.mission.navigateTo(0.0, 0.0, 2):
-            self.get_logger().info("navigateTo fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info('land to platform')
+        # if not self.mission.simpleLanding():
+        #     self.get_logger().info("landing fail")
+        #     self.flow_mode = self.STOP_FLOW
+        #     return
+        # self.get_logger().info('takeoff')
+        # if not self.mission.simpleTakeoff():
+        #     self.get_logger().info("takeoff fail")
+        #     self.flow_mode = self.STOP_FLOW
+        #     return
+        # if not self.mission.navigateTo(5.127, 2.235, 2):
+        #     self.get_logger().info("navigateTo fail")
+        #     self.flow_mode = self.STOP_FLOW
+        #     return
+        # time.sleep(1)
+        # # set home position
+        # self.get_logger().info('go to 0 0 2')
+        # if not self.mission.navigateTo(0.0, 0.0, 2):
+        #     self.get_logger().info("navigateTo fail")
+        #     self.flow_mode = self.STOP_FLOW
+        #     return
+        # self.get_logger().info('land to platform')
+        self.controller.setMode()
+        time.sleep(2)
         self.mission.landedOnPlatform()
         self.flow_mode = self.STOP_FLOW
 
