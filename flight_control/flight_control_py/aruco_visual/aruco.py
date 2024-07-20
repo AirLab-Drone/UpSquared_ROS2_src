@@ -192,31 +192,31 @@ class Aruco:
     def is_empty(self):
         return len(self.x_list.items) == 0
 
-    def euler_to_quaternion(self, roll, pitch, yaw):
-        # 將Euler角轉換為旋轉矩陣
-        rotation_matrix = Rotation.from_euler("xyz", [roll, pitch, yaw]).as_matrix()
+    # def euler_to_quaternion(self, roll, pitch, yaw):
+    #     # 將Euler角轉換為旋轉矩陣
+    #     rotation_matrix = Rotation.from_euler("xyz", [roll, pitch, yaw]).as_matrix()
 
-        # 將旋轉矩陣轉換為四元數
-        quaternion = Rotation.from_matrix(rotation_matrix).as_quat()
+    #     # 將旋轉矩陣轉換為四元數
+    #     quaternion = Rotation.from_matrix(rotation_matrix).as_quat()
 
-        return quaternion
+    #     return quaternion
 
-    def quaternion_to_euler(self, quaternion):
-        x = quaternion.x
-        y = quaternion.y
-        z = quaternion.z
-        w = quaternion.w
-        t0 = +2.0 * (w * x + y * z)
-        t1 = +1.0 - 2.0 * (x * x + y * y)
-        X = math.atan2(t0, t1)
-        t2 = +2.0 * (w * y - z * x)
-        t2 = +1.0 if t2 > +1.0 else t2
-        t2 = -1.0 if t2 < -1.0 else t2
-        Y = math.asin(t2)
-        t3 = +2.0 * (w * z + x * y)
-        t4 = +1.0 - 2.0 * (y * y + z * z)
-        Z = math.atan2(t3, t4)
-        return X, Y, Z
+    # def quaternion_to_euler(self, quaternion):
+    #     x = quaternion.x
+    #     y = quaternion.y
+    #     z = quaternion.z
+    #     w = quaternion.w
+    #     t0 = +2.0 * (w * x + y * z)
+    #     t1 = +1.0 - 2.0 * (x * x + y * y)
+    #     X = math.atan2(t0, t1)
+    #     t2 = +2.0 * (w * y - z * x)
+    #     t2 = +1.0 if t2 > +1.0 else t2
+    #     t2 = -1.0 if t2 < -1.0 else t2
+    #     Y = math.asin(t2)
+    #     t3 = +2.0 * (w * z + x * y)
+    #     t4 = +1.0 - 2.0 * (y * y + z * z)
+    #     Z = math.atan2(t3, t4)
+    #     return X, Y, Z
 
     def fromMsgMarker2Aruco(self, marker: Marker):
         """
