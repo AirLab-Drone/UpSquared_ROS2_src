@@ -1,4 +1,3 @@
-
 class PID:
     def __init__(self, Kp, Ki, Kd, setpoint, offset=0, time=0):
         self.Kp = Kp
@@ -12,11 +11,17 @@ class PID:
         self.integral = 0
 
     def PID(self, measurement, time):
+        '''
+        @parm measurement: 移動誤差
+        @parm time: 更新時的時間
+        '''
         # PID calculations
-        e = self.setpoint - measurement
-        P = self.Kp*e
-        self.integral = self.integral + self.Ki*e*(time - self.time_prev)
-        D = self.Kd*(e - self.e_prev)/(time - self.time_prev)# calculate manipulated variable - MV
+        e = measurement - self.setpoint
+        P = self.Kp * e
+        self.integral = self.integral + self.Ki * e * (time - self.time_prev)
+        D = (
+            self.Kd * (e - self.e_prev) / (time - self.time_prev)
+        )  # calculate manipulated variable - MV
         MV = self.offset + P + self.integral + D
         # update stored data for next iteration
         self.e_prev = e
@@ -30,5 +35,3 @@ class PID:
         self.integral = 0
         self.e_prev = 0
         self.time_prev = 0
-
-

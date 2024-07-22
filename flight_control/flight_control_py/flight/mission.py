@@ -122,6 +122,15 @@ class Mission:
         MAX_YAW = 15 * 3.14 / 180  # 15度/s
         DOWNWARD_SPEED = -0.05  # the distance to move down,必需要為負
         last_moveup_time = rclpy.clock.Clock().now()
+
+        # -------------------------------- PID initial ------------------------------- #
+        def init_pid():
+            pid_move_x = PID(0.5, 0, 0, 0)
+            pid_move_y = PID(0.5, 0, 0, 0)
+            pid_move_yaw = PID(0.5, 0, 0, 0)
+            return pid_move_x, pid_move_y, pid_move_yaw
+
+        pid_move_x, pid_move_y, pid_move_yaw = init_pid()
         # ------------------------------- start mission ------------------------------ #
         while True:
             # 設定中斷點，如果不是降落模式就直接結束
@@ -142,7 +151,7 @@ class Mission:
                             0, 0, -DOWNWARD_SPEED, 0
                         )
                         last_moveup_time = rclpy.clock.Clock().now()
-                # self.controller.setZeroVelocity()
+                        pid_move_x, pid_move_y, pid_move_yaw = init_pid()
                 continue
             marker_x, marker_y, marker_z, marker_yaw, _, _ = (
                 closest_aruco.get_coordinate_with_offset()
@@ -164,25 +173,28 @@ class Mission:
                             0, 0, -DOWNWARD_SPEED, 0
                         )
                         last_moveup_time = rclpy.clock.Clock().now()
-                # self.controller.setZeroVelocity()
+                        pid_move_x, pid_move_y, pid_move_yaw = init_pid()
                 continue
-            last_moveup_time = rclpy.clock.Clock().now()
             # 無人機和降落點的水平誤差
-            diffrent_distance = math.sqrt(marker_x**2 + marker_y**2)
+            different_distance = math.sqrt(marker_x**2 + marker_y**2)
             # limit move_x and move_y and move_yaw #
             # todo改成以無人機為準的座標系
             # todo加入PID控制
-            # move_x = min(max(-marker_y, -MAX_SPEED), MAX_SPEED)
-            # move_y = min(max(-marker_x, -MAX_SPEED), MAX_SPEED)
-            max_speed_temp = min(max(diffrent_distance,-MAX_SPEED),MAX_SPEED)
-            move_x = -marker_y / diffrent_distance * max_speed_temp
-            move_y = -marker_x / diffrent_distance * max_speed_temp
+            # PID control
+            move_x = pid_move_x.PID(-marker_y, rclpy.clock.Clock().now())
+            move_y = pid_move_y.PID(-marker_x, rclpy.clock.Clock().now())
+            move_yaw = pid_move_yaw(-marker_yaw * 3.14 / 180, rclpy.clock.Clock().now())
+            # 限制最大速度
+            max_speed_temp = min(max(different_distance, -MAX_SPEED), MAX_SPEED)
+            move_x = -marker_y / different_distance * max_speed_temp
+            move_y = -marker_x / different_distance * max_speed_temp
             if (360 - marker_yaw) < marker_yaw:
                 marker_yaw = -marker_yaw
             move_yaw = min(max(-marker_yaw * 3.14 / 180, -MAX_YAW), MAX_YAW)
+            last_moveup_time = rclpy.clock.Clock().now()
             # send velocity command#
             if (
-                diffrent_distance < 0.03
+                different_distance < 0.03
                 and self.flight_info.rangefinder_alt <= LOWEST_HEIGHT
                 and (0 < marker_yaw < 5 or 355 < marker_yaw < 360)
             ):
@@ -209,10 +221,10 @@ class Mission:
                     move_yaw,
                 )
             print(
-                f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{diffrent_distance:.2f}"
+                f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{different_distance:.2f}"
             )
             self.node.get_logger().debug(
-                f"[Mission.landedOnPlatform] move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{diffrent_distance:.2f}"
+                f"[Mission.landedOnPlatform] move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{different_distance:.2f}"
             )
         self.controller.setZeroVelocity()
         print("now I want to land=================================")
