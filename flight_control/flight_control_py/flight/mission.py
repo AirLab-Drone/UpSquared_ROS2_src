@@ -120,7 +120,7 @@ class Mission:
         LOWEST_HEIGHT = 0.2  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
         MAX_YAW = 15 * 3.14 / 180  # 15度/s
-        DOWNWARD_SPEED = -0.05  # the distance to move down,必需要為負
+        DOWNWARD_SPEED = -0.2  # the distance to move down,必需要為負
         last_moveup_time = rclpy.clock.Clock().now()
 
         # -------------------------------- PID initial ------------------------------- #
@@ -186,11 +186,11 @@ class Mission:
             move_yaw = pid_move_yaw(-marker_yaw * 3.14 / 180, rclpy.clock.Clock().now())
             # 限制最大速度
             max_speed_temp = min(max(different_distance, -MAX_SPEED), MAX_SPEED)
-            move_x = -marker_y / different_distance * max_speed_temp
-            move_y = -marker_x / different_distance * max_speed_temp
-            if (360 - marker_yaw) < marker_yaw:
-                marker_yaw = -marker_yaw
-            move_yaw = min(max(-marker_yaw * 3.14 / 180, -MAX_YAW), MAX_YAW)
+            move_x = move_x / different_distance * max_speed_temp
+            move_y = move_y / different_distance * max_speed_temp
+            if (360 - move_yaw) < move_yaw:
+                move_yaw = -move_yaw
+            move_yaw = min(max(move_yaw, -MAX_YAW), MAX_YAW)
             last_moveup_time = rclpy.clock.Clock().now()
             # send velocity command#
             if (
@@ -204,7 +204,6 @@ class Mission:
                     f"x:{marker_x}, y:{marker_y}, z:{marker_z}, yaw:{marker_yaw}, high:{self.flight_info.rangefinder_alt}"
                 )
                 break
-            # self.controller.sendPositionTargetPosition(0, 0, 0, yaw=move_yaw)
             if self.flight_info.rangefinder_alt > LOWEST_HEIGHT:
                 self.controller.sendPositionTargetVelocity(
                     move_x,
