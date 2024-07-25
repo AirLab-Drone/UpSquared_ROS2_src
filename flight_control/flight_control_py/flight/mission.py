@@ -10,7 +10,6 @@ from aruco_msgs.msg import Marker
 import time
 import yaml
 
-
 class Mission:
     """
     包含都個任務的class，用於導航，降落等功能
@@ -95,7 +94,8 @@ class Mission:
         while not self.controller.land():
             print("landing")
         while self.flight_info.state.armed:
-            print(f"landing high:{self.flight_info.rangefinder_alt}")
+            # print(f"landing high:{self.flight_info.rangefinder_alt}")
+            pass
         self.mode = self.WAIT_MODE
         return True
 
@@ -125,9 +125,9 @@ class Mission:
 
         # -------------------------------- PID initial ------------------------------- #
         def init_pid():
-            pid_move_x = PID(0.5, 0, 0, 0)
-            pid_move_y = PID(0.5, 0, 0, 0)
-            pid_move_yaw = PID(0.5, 0, 0, 0)
+            pid_move_x = PID(0.5, 0.01, 0, 0)
+            pid_move_y = PID(0.5, 0.01, 0, 0)
+            pid_move_yaw = PID(0.5, 0.01, 0, 0)
             return pid_move_x, pid_move_y, pid_move_yaw
 
         pid_move_x, pid_move_y, pid_move_yaw = init_pid()
@@ -181,9 +181,10 @@ class Mission:
             # todo改成以無人機為準的座標系
             # todo加入PID控制
             # PID control
-            move_x = pid_move_x.PID(-marker_y, rclpy.clock.Clock().now())
-            move_y = pid_move_y.PID(-marker_x, rclpy.clock.Clock().now())
-            move_yaw = pid_move_yaw(-marker_yaw * 3.14 / 180, rclpy.clock.Clock().now())
+            current_time = rclpy.clock.Clock().now().seconds_nanoseconds()[0]
+            move_x = pid_move_x.PID(-marker_y, current_time)
+            move_y = pid_move_y.PID(-marker_x, current_time)
+            move_yaw = pid_move_yaw.PID(-marker_yaw * 3.14 / 180, current_time)
             # 限制最大速度
             max_speed_temp = min(max(different_distance, -MAX_SPEED), MAX_SPEED)
             move_x = move_x / different_distance * max_speed_temp
@@ -229,8 +230,8 @@ class Mission:
         print("now I want to land=================================")
         while not self.controller.land():
             print("landing")
-        while self.flight_info.rangefinder_alt > 0.1:
-            print(f"landing high:{self.flight_info.rangefinder_alt}")
+        # while self.flight_info.rangefinder_alt > 0.1:
+        #     print(f"landing high:{self.flight_info.rangefinder_alt}")
         self.mode = self.WAIT_MODE
         return True
 

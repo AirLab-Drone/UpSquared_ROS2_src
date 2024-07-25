@@ -12,15 +12,21 @@ class PID:
 
     def PID(self, measurement, time):
         '''
+        calculate PID
         @parm measurement: 移動誤差
         @parm time: 更新時的時間
         '''
         # PID calculations
         e = measurement - self.setpoint
         P = self.Kp * e
-        self.integral = self.integral + self.Ki * e * (time - self.time_prev)
+
+        time_diff = time - self.time_prev
+        if time_diff == 0:
+            time_diff = 1e-6  # 避免除以零的情况，设置一个非常小的值
+
+        self.integral = self.integral + self.Ki * e * time_diff
         D = (
-            self.Kd * (e - self.e_prev) / (time - self.time_prev)
+            self.Kd * (e - self.e_prev) / time_diff
         )  # calculate manipulated variable - MV
         MV = self.offset + P + self.integral + D
         # update stored data for next iteration
