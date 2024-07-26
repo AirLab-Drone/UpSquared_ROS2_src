@@ -21,9 +21,10 @@ class PID:
         P = self.Kp * e
 
         time_diff = time - self.time_prev
+
         if time_diff == 0:
             time_diff = 1e-6  # 避免除以零的情况，设置一个非常小的值
-
+        time_diff = time_diff * 1e-9
         self.integral = self.integral + self.Ki * e * time_diff
         D = (
             self.Kd * (e - self.e_prev) / time_diff

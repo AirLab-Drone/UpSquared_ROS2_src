@@ -142,7 +142,7 @@ class MainFlightNode(Node):
             self.flow_mode = self.STOP_FLOW
             return
         # set home position
-        if not self.mission.navigateTo(10.974939259516479, 4.05861482263504, 0):
+        if not self.mission.navigateTo(10.974939259516479, -9.05861482263504, 0):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return

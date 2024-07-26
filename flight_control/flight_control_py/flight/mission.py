@@ -117,7 +117,7 @@ class Mission:
             return False
         self.__setMode(self.LANDIND_ON_PLATFORM_MODE)
         # --------------------------------- variable --------------------------------- #
-        LOWEST_HEIGHT = 0.2  # 最低可看到aruco的高度 單位:公尺
+        LOWEST_HEIGHT = 0.3  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
         MAX_YAW = 15 * 3.14 / 180  # 15度/s
         DOWNWARD_SPEED = -0.2  # the distance to move down,必需要為負
@@ -125,9 +125,9 @@ class Mission:
 
         # -------------------------------- PID initial ------------------------------- #
         def init_pid():
-            pid_move_x = PID(0.5, 0.01, 0, 0)
-            pid_move_y = PID(0.5, 0.01, 0, 0)
-            pid_move_yaw = PID(0.5, 0.01, 0, 0)
+            pid_move_x = PID(0.5, 0, 5, 0)
+            pid_move_y = PID(0.5, 0, 5, 0)
+            pid_move_yaw = PID(0.5, 0, 5, 0)
             return pid_move_x, pid_move_y, pid_move_yaw
 
         pid_move_x, pid_move_y, pid_move_yaw = init_pid()
@@ -168,7 +168,7 @@ class Mission:
                 ):
                     # todo 若看不到aruco水平飛到UWB home position
                     if self.flight_info.rangefinder_alt < 3:
-                        # print('move up')
+                        # print('mo = pid_move_y.PID(-marker_x, current_time)ve up')
                         self.controller.sendPositionTargetVelocity(
                             0, 0, -DOWNWARD_SPEED, 0
                         )
@@ -181,17 +181,21 @@ class Mission:
             # todo改成以無人機為準的座標系
             # todo加入PID控制
             # PID control
-            current_time = rclpy.clock.Clock().now().seconds_nanoseconds()[0]
+            current_time = rclpy.clock.Clock().now().nanoseconds
             move_x = pid_move_x.PID(-marker_y, current_time)
             move_y = pid_move_y.PID(-marker_x, current_time)
             move_yaw = pid_move_yaw.PID(-marker_yaw * 3.14 / 180, current_time)
+            different_move = math.sqrt(move_x**2 + move_y**2)
             # 限制最大速度
-            max_speed_temp = min(max(different_distance, -MAX_SPEED), MAX_SPEED)
-            move_x = move_x / different_distance * max_speed_temp
-            move_y = move_y / different_distance * max_speed_temp
+            max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
+            move_x = move_x / different_move * max_speed_temp
+            move_y = move_y / different_move * max_speed_temp
             if (360 - move_yaw) < move_yaw:
                 move_yaw = -move_yaw
             move_yaw = min(max(move_yaw, -MAX_YAW), MAX_YAW)
+            print(
+                f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{different_distance:.2f}"
+            )
             last_moveup_time = rclpy.clock.Clock().now()
             # send velocity command#
             if (
@@ -220,9 +224,6 @@ class Mission:
                     0,
                     move_yaw,
                 )
-            print(
-                f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{different_distance:.2f}"
-            )
             self.node.get_logger().debug(
                 f"[Mission.landedOnPlatform] move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{different_distance:.2f}"
             )
