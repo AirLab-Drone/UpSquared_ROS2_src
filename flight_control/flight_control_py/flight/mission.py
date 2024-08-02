@@ -117,17 +117,18 @@ class Mission:
             return False
         self.__setMode(self.LANDIND_ON_PLATFORM_MODE)
         # --------------------------------- variable --------------------------------- #
-        LOWEST_HEIGHT = 0.3  # 最低可看到aruco的高度 單位:公尺
+        LOWEST_HEIGHT = 0.7  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
-        MAX_YAW = 15 * 3.14 / 180  # 15度/s
+        MAX_YAW = 25 * 3.14 / 180  # 15度/s
         DOWNWARD_SPEED = -0.2  # the distance to move down,必需要為負
         last_moveup_time = rclpy.clock.Clock().now()
 
         # -------------------------------- PID initial ------------------------------- #
         def init_pid():
-            pid_move_x = PID(0.5, 0, 5, 0)
-            pid_move_y = PID(0.5, 0, 5, 0)
-            pid_move_yaw = PID(0.5, 0, 5, 0)
+            current_time = rclpy.clock.Clock().now().nanoseconds
+            pid_move_x = PID(0.6, 0.006, 0.0083, current_time)
+            pid_move_y = PID(0.6, 0.006, 0.0083, current_time)
+            pid_move_yaw = PID(0.6, 0.006, 0.0083, current_time)
             return pid_move_x, pid_move_y, pid_move_yaw
 
         pid_move_x, pid_move_y, pid_move_yaw = init_pid()
@@ -182,9 +183,9 @@ class Mission:
             # todo加入PID控制
             # PID control
             current_time = rclpy.clock.Clock().now().nanoseconds
-            move_x = pid_move_x.PID(-marker_y, current_time)
-            move_y = pid_move_y.PID(-marker_x, current_time)
-            move_yaw = pid_move_yaw.PID(-marker_yaw * 3.14 / 180, current_time)
+            move_x = pid_move_x.update(-marker_y, current_time)
+            move_y = pid_move_y.update(-marker_x, current_time)
+            move_yaw = pid_move_yaw.update(-marker_yaw * 3.14 / 180, current_time)
             different_move = math.sqrt(move_x**2 + move_y**2)
             # 限制最大速度
             max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
@@ -218,6 +219,7 @@ class Mission:
                 )
             else:
                 # when height is lower than lowest_high, stop moving down
+                print(f" when height is lower than lowest_high, stop moving down")
                 self.controller.sendPositionTargetVelocity(
                     move_x,
                     move_y,
