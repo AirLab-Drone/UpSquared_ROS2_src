@@ -159,6 +159,14 @@ class BaseControl:
         time.sleep(6)
         return True
 
+    def mario_takeoff(self, alt=3.2):
+        if type(alt) != float:
+            alt = float(alt)
+        print("takeoff alt:", alt)
+
+        time.sleep(6)
+        return True
+    
     def land(self):
         land_client = self.node.create_client(CommandTOL, "/mavros/cmd/land")
         land_request = CommandTOL.Request()
