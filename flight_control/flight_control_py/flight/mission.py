@@ -10,6 +10,7 @@ from aruco_msgs.msg import Marker
 import time
 import yaml
 
+
 class Mission:
     """
     包含都個任務的class，用於導航，降落等功能
@@ -128,7 +129,8 @@ class Mission:
             current_time = rclpy.clock.Clock().now().nanoseconds
             pid_move_x = PID(0.6, 0.006, 0.0083, current_time)
             pid_move_y = PID(0.6, 0.006, 0.0083, current_time)
-            pid_move_yaw = PID(0.6, 0.006, 0.0083, current_time)
+            pid_move_yaw = PID(1, 0.006, 0.0083, current_time)
+            # pid_move_yaw = PID(0.4, 0.006, 0.0083, current_time)
             return pid_move_x, pid_move_y, pid_move_yaw
 
         pid_move_x, pid_move_y, pid_move_yaw = init_pid()
@@ -185,24 +187,27 @@ class Mission:
             current_time = rclpy.clock.Clock().now().nanoseconds
             move_x = pid_move_x.update(-marker_y, current_time)
             move_y = pid_move_y.update(-marker_x, current_time)
+
+            marker_yaw = (marker_yaw + 180) % 360 - 180
             move_yaw = pid_move_yaw.update(-marker_yaw * 3.14 / 180, current_time)
             different_move = math.sqrt(move_x**2 + move_y**2)
             # 限制最大速度
             max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
             move_x = move_x / different_move * max_speed_temp
             move_y = move_y / different_move * max_speed_temp
-            if (360 - move_yaw) < move_yaw:
-                move_yaw = -move_yaw
-            move_yaw = min(max(move_yaw, -MAX_YAW), MAX_YAW)
+            # move_yaw = (move_yaw + 6.28) % 6.28
+            # if (6.28 - move_yaw) < move_yaw:
+            #     move_yaw = -move_yaw
+            # move_yaw = min(max(move_yaw, -MAX_YAW), MAX_YAW)
             print(
                 f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{different_distance:.2f}"
             )
             last_moveup_time = rclpy.clock.Clock().now()
             # send velocity command#
             if (
-                different_distance < 0.03
+                different_distance < 0.5
                 and self.flight_info.rangefinder_alt <= LOWEST_HEIGHT
-                and (0 < marker_yaw < 5 or 355 < marker_yaw < 360)
+                and (0 <= marker_yaw <= 5 or 355 <= marker_yaw <= 360)
             ):
                 self.controller.setZeroVelocity()
                 print(f"landing high:{self.flight_info.rangefinder_alt}")
@@ -218,8 +223,6 @@ class Mission:
                     move_yaw,
                 )
             else:
-                # when height is lower than lowest_high, stop moving down
-                print(f" when height is lower than lowest_high, stop moving down")
                 self.controller.sendPositionTargetVelocity(
                     move_x,
                     move_y,

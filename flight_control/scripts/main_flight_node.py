@@ -116,7 +116,7 @@ class MainFlightNode(Node):
         # time.sleep(1)
         # # set home position
         # self.get_logger().info('go to 0 0 2')
-        if not self.mission.navigateTo(0.0, 0.0, 2):
+        if not self.mission.navigateTo(1.0, 1.0, 2):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
