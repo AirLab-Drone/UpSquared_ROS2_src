@@ -183,27 +183,23 @@ class Mission:
             # limit move_x and move_y and move_yaw #
             # todo改成以無人機為準的座標系
             # todo加入PID控制
-            # PID control
+            # -------------------------------- PID control ------------------------------- #
             current_time = rclpy.clock.Clock().now().nanoseconds
             move_x = pid_move_x.update(-marker_y, current_time)
             move_y = pid_move_y.update(-marker_x, current_time)
-
             marker_yaw = (marker_yaw + 180) % 360 - 180
             move_yaw = pid_move_yaw.update(-marker_yaw * 3.14 / 180, current_time)
+            # ---------------------------------- 限制最大速度 ---------------------------------- #
             different_move = math.sqrt(move_x**2 + move_y**2)
-            # 限制最大速度
             max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
             move_x = move_x / different_move * max_speed_temp
             move_y = move_y / different_move * max_speed_temp
-            # move_yaw = (move_yaw + 6.28) % 6.28
-            # if (6.28 - move_yaw) < move_yaw:
-            #     move_yaw = -move_yaw
-            # move_yaw = min(max(move_yaw, -MAX_YAW), MAX_YAW)
-            print(
-                f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{different_distance:.2f}"
-            )
+            move_yaw = min(max(move_yaw, -MAX_YAW), MAX_YAW)
+            # print(
+            #     f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{different_distance:.2f}"
+            # )
             last_moveup_time = rclpy.clock.Clock().now()
-            # send velocity command#
+            # ------------------ check distance and yaw, whether landing ----------------- #
             if (
                 different_distance < 0.5
                 and self.flight_info.rangefinder_alt <= LOWEST_HEIGHT
@@ -215,6 +211,7 @@ class Mission:
                     f"x:{marker_x}, y:{marker_y}, z:{marker_z}, yaw:{marker_yaw}, high:{self.flight_info.rangefinder_alt}"
                 )
                 break
+            # --------------------------- send velocity command -------------------------- #
             if self.flight_info.rangefinder_alt > LOWEST_HEIGHT:
                 self.controller.sendPositionTargetVelocity(
                     move_x,
@@ -236,8 +233,6 @@ class Mission:
         print("now I want to land=================================")
         while not self.controller.land():
             print("landing")
-        # while self.flight_info.rangefinder_alt > 0.1:
-        #     print(f"landing high:{self.flight_info.rangefinder_alt}")
         self.mode = self.WAIT_MODE
         return True
 
