@@ -129,11 +129,12 @@ class Mission:
             current_time = rclpy.clock.Clock().now().nanoseconds
             pid_move_x = PID(0.6, 0.006, 0.0083, current_time)
             pid_move_y = PID(0.6, 0.006, 0.0083, current_time)
+            pid_move_z = PID(0.4, 0.006, 0.0083, current_time, LOWEST_HEIGHT)
             pid_move_yaw = PID(1, 0.006, 0.0083, current_time)
             # pid_move_yaw = PID(0.4, 0.006, 0.0083, current_time)
-            return pid_move_x, pid_move_y, pid_move_yaw
+            return pid_move_x, pid_move_y, pid_move_yaw, pid_move_z
 
-        pid_move_x, pid_move_y, pid_move_yaw = init_pid()
+        pid_move_x, pid_move_y, pid_move_yaw, pid_move_z = init_pid()
         # ------------------------------- start mission ------------------------------ #
         while True:
             # 設定中斷點，如果不是降落模式就直接結束
@@ -154,7 +155,7 @@ class Mission:
                             0, 0, -DOWNWARD_SPEED, 0
                         )
                         last_moveup_time = rclpy.clock.Clock().now()
-                        pid_move_x, pid_move_y, pid_move_yaw = init_pid()
+                        pid_move_x, pid_move_y, pid_move_yaw, pid_move_z = init_pid()
                 continue
             marker_x, marker_y, marker_z, marker_yaw, _, _ = (
                 closest_aruco.get_coordinate_with_offset()
@@ -176,7 +177,7 @@ class Mission:
                             0, 0, -DOWNWARD_SPEED, 0
                         )
                         last_moveup_time = rclpy.clock.Clock().now()
-                        pid_move_x, pid_move_y, pid_move_yaw = init_pid()
+                        pid_move_x, pid_move_y, pid_move_yaw, pid_move_z = init_pid()
                 continue
             # 無人機和降落點的水平誤差
             different_distance = math.sqrt(marker_x**2 + marker_y**2)
@@ -185,49 +186,53 @@ class Mission:
             # todo加入PID控制
             # -------------------------------- PID control ------------------------------- #
             current_time = rclpy.clock.Clock().now().nanoseconds
-            move_x = pid_move_x.update(-marker_y, current_time)
-            move_y = pid_move_y.update(-marker_x, current_time)
+            move_x = pid_move_x.update(marker_y, current_time)
+            move_y = pid_move_y.update(marker_x, current_time)
+            move_z = pid_move_z.update(self.flight_info.rangefinder_alt, current_time)
             marker_yaw = (marker_yaw + 180) % 360 - 180
-            move_yaw = pid_move_yaw.update(-marker_yaw * 3.14 / 180, current_time)
+            move_yaw = pid_move_yaw.update(marker_yaw * 3.14 / 180, current_time)
+            print(f'move_z: {pid_move_z.SetPoint}')
             # ---------------------------------- 限制最大速度 ---------------------------------- #
             different_move = math.sqrt(move_x**2 + move_y**2)
             max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
             move_x = move_x / different_move * max_speed_temp
             move_y = move_y / different_move * max_speed_temp
+            move_z = min(max(move_z, -MAX_SPEED), MAX_SPEED)
             move_yaw = min(max(move_yaw, -MAX_YAW), MAX_YAW)
             # print(
-            #     f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{different_distance:.2f}"
+            #     f"=====================================\nmove_x:            {move_x}\nmove_y:            {move_y}\nmove_z:            {move_z}\nmove_yaw:          {move_yaw}\ndifferent_distance:{different_distance}\nrangefinder_alt:{self.flight_info.rangefinder_alt}"
             # )
+
             last_moveup_time = rclpy.clock.Clock().now()
             # ------------------ check distance and yaw, whether landing ----------------- #
             if (
-                different_distance < 0.5
+                different_distance < 0.05
                 and self.flight_info.rangefinder_alt <= LOWEST_HEIGHT
-                and (0 <= marker_yaw <= 5 or 355 <= marker_yaw <= 360)
+                and (-5 <= marker_yaw <= 5)
             ):
                 self.controller.setZeroVelocity()
                 print(f"landing high:{self.flight_info.rangefinder_alt}")
-                print(
-                    f"x:{marker_x}, y:{marker_y}, z:{marker_z}, yaw:{marker_yaw}, high:{self.flight_info.rangefinder_alt}"
-                )
+                # print(
+                #     f"x:{marker_x}, y:{marker_y}, z:{marker_z}, yaw:{marker_yaw}, high:{self.flight_info.rangefinder_alt}"
+                # )
                 break
             # --------------------------- send velocity command -------------------------- #
             if self.flight_info.rangefinder_alt > LOWEST_HEIGHT:
                 self.controller.sendPositionTargetVelocity(
                     move_x,
                     move_y,
-                    DOWNWARD_SPEED,
+                    move_z,
                     move_yaw,
                 )
-            else:
-                self.controller.sendPositionTargetVelocity(
-                    move_x,
-                    move_y,
-                    0,
-                    move_yaw,
-                )
+            # else:
+            #     self.controller.sendPositionTargetVelocity(
+            #         move_x,
+            #         move_y,
+            #         0,
+            #         move_yaw,
+            #     )
             self.node.get_logger().debug(
-                f"[Mission.landedOnPlatform] move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{different_distance:.2f}"
+                f"[Mission.landedOnPlatform] move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_z:{move_z:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{different_distance:.2f}"
             )
         self.controller.setZeroVelocity()
         print("now I want to land=================================")

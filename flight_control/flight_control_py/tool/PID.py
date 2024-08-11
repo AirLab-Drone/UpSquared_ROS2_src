@@ -52,12 +52,13 @@ class PID:
 
     # def __init__(self, P=0.4, I=0.08, D=0.085, current_time=None):
 
-    def __init__(self, P=0.6, I=0.006, D=0.0083, current_time=None):
+    def __init__(self, P=0.6, I=0.006, D=0.0083, current_time=None, set_point=0):
 
         self.Kp = P
         self.Ki = I
         self.Kd = D
 
+        self.SetPoint = set_point
         self.sample_time = 0.00
         # self.current_time = current_time if current_time is not None else time.time()
         self.last_time = current_time
@@ -66,7 +67,7 @@ class PID:
 
     def clear(self):
         """Clears PID computations and coefficients"""
-        self.SetPoint = 0.0
+        # self.SetPoint = 0.0
 
         self.PTerm = 0.0
         self.ITerm = 0.0
@@ -87,7 +88,7 @@ class PID:
            :align:   center
            Test PID with Kp=1.2, Ki=1, Kd=0.001 (test_pid.py)
         """
-        error = feedback_value - self.SetPoint
+        error = self.SetPoint - feedback_value
         # print("Error :" + str(error))
         # self.current_time = current_time if current_time is not None else time.time()
         delta_time = current_time - self.last_time
