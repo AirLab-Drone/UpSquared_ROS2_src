@@ -18,7 +18,7 @@ class MainFlightNode(Node):
 
     # incoming message
     thermal_alert_msg = ThermalAlert()
-
+    
     def __init__(self):
         super().__init__("main_flight_node")
         # --------------------------------ros2 Parameters -------------------------------- #
