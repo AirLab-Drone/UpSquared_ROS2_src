@@ -123,6 +123,7 @@ class Mission:
         MAX_YAW = 25 * 3.14 / 180  # 15度/s
         DOWNWARD_SPEED = -0.2  # the distance to move down,必需要為負
         last_moveup_time = rclpy.clock.Clock().now()
+        last_not_in_range_time = rclpy.clock.Clock().now()
 
         # -------------------------------- PID initial ------------------------------- #
         def init_pid():
@@ -130,8 +131,7 @@ class Mission:
             pid_move_x = PID(0.6, 0.0006, 0.00083, current_time)
             pid_move_y = PID(0.6, 0.0006, 0.00083, current_time)
             pid_move_z = PID(0.4, 0.0006, 0.00083, current_time, LOWEST_HEIGHT)
-            pid_move_yaw = PID(1,  0.0006, 0.00083, current_time)
-            # pid_move_yaw = PID(0.4, 0.006, 0.0083, current_time)
+            pid_move_yaw = PID(1, 0.0006, 0.00083, current_time)
             return pid_move_x, pid_move_y, pid_move_yaw, pid_move_z
 
         pid_move_x, pid_move_y, pid_move_yaw, pid_move_z = init_pid()
@@ -199,9 +199,7 @@ class Mission:
             move_z = min(max(move_z, -MAX_SPEED), MAX_SPEED)
             move_yaw = min(max(move_yaw, -MAX_YAW), MAX_YAW)
             last_moveup_time = rclpy.clock.Clock().now()
-            print(
-                "============================================================================================================="
-            )
+            print("===========================================================")
             print(
                 f"move_x:   {move_x:.2f}, move_y:   {move_y:.2f}, move_z:   {move_z:.2f}, move_yaw:   {move_yaw:.2f}"
             )
@@ -210,13 +208,23 @@ class Mission:
             )
             # ------------------ check distance and yaw, whether landing ----------------- #
             if (
-                different_distance < 0.05
-                and marker_z <= LOWEST_HEIGHT
+                different_distance < 0.1
+                and marker_z <= LOWEST_HEIGHT*1.2
                 and (-5 <= marker_yaw <= 5)
             ):
-                self.controller.setZeroVelocity()
-                print(f"landing high:{marker_z}")
-                break
+                if (
+                    rclpy.clock.Clock().now() - last_not_in_range_time
+                    > rclpy.time.Duration(seconds=2)
+                ):
+                    self.controller.setZeroVelocity()
+                    print(f"landing high:{marker_z}")
+                    break
+                print(
+                    f"during last not in range time: {rclpy.clock.Clock().now() - last_not_in_range_time}"
+                )
+                pass
+            else:
+                last_not_in_range_time = rclpy.clock.Clock().now()
             # --------------------------- send velocity command -------------------------- #
             self.controller.sendPositionTargetVelocity(move_x, move_y, move_z, move_yaw)
         self.controller.setZeroVelocity()
