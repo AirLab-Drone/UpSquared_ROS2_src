@@ -216,19 +216,9 @@ class Mission:
             ):
                 self.controller.setZeroVelocity()
                 print(f"landing high:{marker_z}")
-                # print(
-                #     f"x:{marker_x}, y:{marker_y}, z:{marker_z}, yaw:{marker_yaw}, high:{self.flight_info.rangefinder_alt}"
-                # )
                 break
             # --------------------------- send velocity command -------------------------- #
             self.controller.sendPositionTargetVelocity(move_x, move_y, move_z, move_yaw)
-            # else:
-            #     self.controller.sendPositionTargetVelocity(
-            #         move_x,
-            #         move_y,
-            #         0,
-            #         move_yaw,
-            #     )
         self.controller.setZeroVelocity()
         print("now I want to land=================================")
         while not self.controller.land():
