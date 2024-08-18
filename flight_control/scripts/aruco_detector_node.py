@@ -242,7 +242,7 @@ def main():
 
     aruco_detector = ArucoDetector(
         save_video=True,
-        rotate_deg=90,
+        rotate_deg=-90,
         offset_x=0,
         offset_y=0,
     )
