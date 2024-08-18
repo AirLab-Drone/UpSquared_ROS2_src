@@ -118,8 +118,9 @@ class Mission:
             return False
         self.__setMode(self.LANDIND_ON_PLATFORM_MODE)
         # --------------------------------- variable --------------------------------- #
-        LOWEST_HEIGHT = 0.4  # 最低可看到aruco的高度 單位:公尺
+        LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
+        MAX_DOWN_SPEED = 0.15 # 速度 單位:公尺/秒
         MAX_YAW = 25 * 3.14 / 180  # 15度/s
         DOWNWARD_SPEED = -0.2  # the distance to move down,必需要為負
         last_moveup_time = rclpy.clock.Clock().now()
@@ -131,7 +132,7 @@ class Mission:
             pid_move_x = PID(0.6, 0.0006, 0.00083, current_time)
             pid_move_y = PID(0.6, 0.0006, 0.00083, current_time)
             pid_move_z = PID(0.4, 0.0006, 0.00083, current_time, LOWEST_HEIGHT)
-            pid_move_yaw = PID(1, 0.0006, 0.00083, current_time)
+            pid_move_yaw = PID(0.6, 0.0006, 0.00083, current_time)
             return pid_move_x, pid_move_y, pid_move_yaw, pid_move_z
 
         pid_move_x, pid_move_y, pid_move_yaw, pid_move_z = init_pid()
@@ -196,9 +197,10 @@ class Mission:
             max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
             move_x = move_x / different_move * max_speed_temp
             move_y = move_y / different_move * max_speed_temp
-            move_z = min(max(move_z, -MAX_SPEED), MAX_SPEED)
+            move_z = min(max(move_z, -MAX_DOWN_SPEED), MAX_DOWN_SPEED)
             move_yaw = min(max(move_yaw, -MAX_YAW), MAX_YAW)
             last_moveup_time = rclpy.clock.Clock().now()
+            if 
             print("===========================================================")
             print(
                 f"move_x:   {move_x:.2f}, move_y:   {move_y:.2f}, move_z:   {move_z:.2f}, move_yaw:   {move_yaw:.2f}"
@@ -214,7 +216,7 @@ class Mission:
             ):
                 if (
                     rclpy.clock.Clock().now() - last_not_in_range_time
-                    > rclpy.time.Duration(seconds=2)
+                    > rclpy.time.Duration(seconds=1)
                 ):
                     self.controller.setZeroVelocity()
                     print(f"landing high:{marker_z}")
