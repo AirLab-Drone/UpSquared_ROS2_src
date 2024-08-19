@@ -120,7 +120,7 @@ class Mission:
         # --------------------------------- variable --------------------------------- #
         LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
-        MAX_DOWN_SPEED = 0.15 # 速度 單位:公尺/秒
+        MAX_DOWN_SPEED = 0.15  # 速度 單位:公尺/秒
         MAX_YAW = 25 * 3.14 / 180  # 15度/s
         DOWNWARD_SPEED = -0.2  # the distance to move down,必需要為負
         last_moveup_time = rclpy.clock.Clock().now()
@@ -190,17 +190,23 @@ class Mission:
             move_x = pid_move_x.update(marker_y, current_time)
             move_y = pid_move_y.update(marker_x, current_time)
             move_z = pid_move_z.update(marker_z, current_time)
-            marker_yaw = (marker_yaw + 180) % 360 - 180
+            marker_yaw = (marker_yaw + 180) % 360 - 180  # 轉換成-180~180
             move_yaw = pid_move_yaw.update(marker_yaw * 3.14 / 180, current_time)
             # ---------------------------------- 限制最大速度 ---------------------------------- #
             different_move = math.sqrt(move_x**2 + move_y**2)
-            max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
-            move_x = move_x / different_move * max_speed_temp
-            move_y = move_y / different_move * max_speed_temp
-            move_z = min(max(move_z, -MAX_DOWN_SPEED), MAX_DOWN_SPEED)
+            if -90 < marker_yaw < 90:
+                max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
+                move_x = move_x / different_move * max_speed_temp
+                move_y = move_y / different_move * max_speed_temp
+                move_z = min(max(move_z, -MAX_DOWN_SPEED), MAX_DOWN_SPEED)
+            else:
+                # when the yaw is over 90 degree, the drone will not move
+                move_x = 0
+                move_y = 0
+                move_z = 0
             move_yaw = min(max(move_yaw, -MAX_YAW), MAX_YAW)
             last_moveup_time = rclpy.clock.Clock().now()
-            if 
+
             print("===========================================================")
             print(
                 f"move_x:   {move_x:.2f}, move_y:   {move_y:.2f}, move_z:   {move_z:.2f}, move_yaw:   {move_yaw:.2f}"
@@ -211,7 +217,7 @@ class Mission:
             # ------------------ check distance and yaw, whether landing ----------------- #
             if (
                 different_distance < 0.1
-                and marker_z <= LOWEST_HEIGHT*1.2
+                and marker_z <= LOWEST_HEIGHT * 1.2
                 and (-5 <= marker_yaw <= 5)
             ):
                 if (
