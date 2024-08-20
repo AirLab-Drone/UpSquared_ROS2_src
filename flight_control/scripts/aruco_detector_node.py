@@ -45,10 +45,12 @@ class ArucoDetector(Node):
         else:
             self.get_logger().info("connecting to camera")
             self.cap = cv2.VideoCapture(0)
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('m', 'j', 'p', 'g'))
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
             self.get_logger().info("connected to camera")
         print(f"cap: {self.cap}")
-        if type(self.cap) is cv2.VideoCapture:
-            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
+        # if type(self.cap) is cv2.VideoCapture:
+        #     self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
         self.frame = None
         # FPS debug
         self.count = 0
@@ -88,7 +90,7 @@ class ArucoDetector(Node):
         self.aruco_publisher = self.create_publisher(MarkerArray, "aruco_markers", 10)
         self.cloest_aruco_publisher = self.create_publisher(Marker, "cloest_aruco", 10)
         # ------------------------------- start detect ------------------------------- #
-        timer_period = 0.1  # seconds
+        timer_period = 0.01  # seconds
         self.create_timer(timer_period, self.run)
         self.create_timer(timer_period, self.get_cloest_aruco_callback)
 
@@ -101,16 +103,12 @@ class ArucoDetector(Node):
             if self.frame is None:
                 return
             (corners, ids, rejected) = self.detector.detectMarkers(self.frame)
-            if hasattr(self, "out") and self.out is not None:
-                self.frame = cv2.aruco.drawDetectedMarkers(
-                    self.frame, corners, ids, (0, 255, 0)
-                )
-                self.out.write(self.frame)
 
             if len(corners) > 0:
                 for i in range(len(ids)):
                     self.addNewAruco(ids[i][0], corners[i])
             marker_array_temp = MarkerArray()
+            count = 0
             for aruco in self.arucoList:
                 if aruco.checkInList(ids) and len(corners) > 0:
                     id = aruco.id
@@ -118,10 +116,23 @@ class ArucoDetector(Node):
                 if not aruco.is_empty():
                     marker_array_temp.markers.append(aruco.getCoordinateWithMarkerMsg())
                     # print(aruco.getCoordinate())
+                coord = aruco.getCoordinate()
+                try:
+                    formatted_coord = f'{id}: {coord[0]:.3f}, {coord[1]:.3f}, {coord[2]:.3f}, {coord[3]:.3f}, {coord[4]:.3f}, {coord[5]:.3f}'
+                    cv2.putText(self.frame, formatted_coord,  (10, count*50 + 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                except:
+                    pass
+                count = count + 1
+                
+            if hasattr(self, "out") and self.out is not None:
+                self.frame = cv2.aruco.drawDetectedMarkers(
+                    self.frame, corners, ids, (0, 255, 0)
+                )
+                self.out.write(self.frame)
             marker_array_temp.header.frame_id = "aruco_list"
             marker_array_temp.header.stamp = rclpy.clock.Clock().now().to_msg()
             self.aruco_publisher.publish(marker_array_temp)
-            # self.debug()
+            self.debug()
 
     def stop(self):
         self.is_running = False
@@ -141,9 +152,9 @@ class ArucoDetector(Node):
             #     print(aruco.id,aruco.getCoordinate())
             self.start_time = self.get_clock().now()
         # ------------------------------- aruco status ------------------------------- #
-        cv2.imshow("frame", self.frame)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            self.stop()
+        # cv2.imshow("frame", self.frame)
+        # if cv2.waitKey(1) & 0xFF == ord("q"):
+        #     self.stop()
 
     def get_cloest_aruco_callback(self):
         closest_aruco = None
