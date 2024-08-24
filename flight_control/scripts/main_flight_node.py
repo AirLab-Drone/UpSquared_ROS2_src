@@ -18,7 +18,7 @@ class MainFlightNode(Node):
 
     # incoming message
     thermal_alert_msg = ThermalAlert()
-    
+
     def __init__(self):
         super().__init__("main_flight_node")
         # --------------------------------ros2 Parameters -------------------------------- #
@@ -74,9 +74,9 @@ class MainFlightNode(Node):
             self.mission.stopMission()
             self.get_logger().info("stop flow")
             return
-        # elif self.flow_mode == self.FLOW1_FLOW:
-        #     flowSwitch(self.flow1, "flow1")
-        #     return
+        elif self.flow_mode == self.FLOW1_FLOW:
+            flowSwitch(self.flow1, "flow1")
+            return
         elif self.flow_mode == self.TEST_FLOW:
             flowSwitch(self.testFlow, "testFlow")
             return
@@ -100,31 +100,11 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        # if not self.mission.simpleLanding():
-        #     self.get_logger().info("landing fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
-        # self.get_logger().info('takeoff')
-        # if not self.mission.simpleTakeoff():
-        #     self.get_logger().info("takeoff fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
-        # if not self.mission.navigateTo(5.127, 2.235, 2):
-        #     self.get_logger().info("navigateTo fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
-        # time.sleep(1)
-        # # set home position
-        # self.get_logger().info('go to 0 0 2')
-        # if not self.mission.navigateTo(1.0, -1.0, 2):
-        #     self.get_logger().info("navigateTo fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
-        self.get_logger().info('land to platform')
+        self.get_logger().info("land to platform")
         self.controller.setMode()
         time.sleep(4)
         self.mission.landedOnPlatform()
-        self.flow_mode = self.STOP_FLOW 
+        self.flow_mode = self.STOP_FLOW
 
     def flow1(self):
         """
@@ -135,14 +115,21 @@ class MainFlightNode(Node):
             self.get_logger().info("takeoff fail")
             self.flow_mode = self.STOP_FLOW
             return
-        if not self.mission.navigateTo(
-            self.thermal_alert_msg.x, self.thermal_alert_msg.y, 0, 0
-        ):
+        # if not self.mission.navigateTo(
+        #     self.thermal_alert_msg.x, self.thermal_alert_msg.y, 0, 0
+        # ):
+        #     self.get_logger().info("navigateTo fail")
+        #     self.flow_mode = self.STOP_FLOW
+        #     return
+        # set target position
+        if not self.mission.navigateTo(1, 2, 2):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
+        # wait for 3 seconds
+        time.sleep(3)
         # set home position
-        if not self.mission.navigateTo(10.974939259516479, -9.05861482263504, 0):
+        if not self.mission.navigateTo(10.974939259516479, -9.05861482263504, 2):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return

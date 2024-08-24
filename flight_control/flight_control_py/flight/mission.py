@@ -246,7 +246,7 @@ class Mission:
         self,
         destination_x: float,
         destination_y: float,
-        destination_z: float,
+        destination_z: float = 2,
     ):
         """
         Function to navigate the drone to a specified location.
@@ -260,7 +260,7 @@ class Mission:
             destination_z (float): The rangefinder altitude of the location.
 
         Returns:
-            None
+            bool: True if the drone reaches the location, False otherwise.
         """
         # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
         if self.mode != self.WAIT_MODE:
@@ -268,7 +268,7 @@ class Mission:
         self.__setMode(self.NAVIGATION_MODE)
         # --------------------------------- variable --------------------------------- #
         MAX_SPEED = 0.3
-        MAX_YAW = 15 * 3.14 / 180
+        MAX_YAW = 30 * 3.14 / 180
         bcn_orient_yaw = (
             self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
         )
