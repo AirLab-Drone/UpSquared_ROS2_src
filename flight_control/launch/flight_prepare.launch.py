@@ -8,7 +8,7 @@ import os
 from ament_index_python import get_package_share_directory
 
 
-def changeMavrosPublishRate(msg_id):
+def changeMavrosPublishRate():
     return TimerAction(
         period=10.0,
         actions=[
@@ -19,16 +19,35 @@ def changeMavrosPublishRate(msg_id):
                     "mavros",
                     "mav",
                     "sys",
-                    "message-interval",
-                    "--id",
-                    f"{msg_id}",
-                    "--rate",
+                    "rate",
+                    "--all",
                     "100",
                 ],
                 output="screen",
             )
         ],
     )
+# def changeMavrosPublishRate(msg_id):
+#     return TimerAction(
+#         period=10.0,
+#         actions=[
+#             ExecuteProcess(
+#                 cmd=[
+#                     "ros2",
+#                     "run",
+#                     "mavros",
+#                     "mav",
+#                     "sys",
+#                     "message-interval",
+#                     "--id",
+#                     f"{msg_id}",
+#                     "--rate",
+#                     "100",
+#                 ],
+#                 output="screen",
+#             )
+#         ],
+#     )
 
 
 def generate_launch_description():
@@ -49,8 +68,9 @@ def generate_launch_description():
                     "fcu_url": "/dev/ttyACM0",
                 }.items(),
             ),
-            changeMavrosPublishRate(24),
-            changeMavrosPublishRate(33),
-            changeMavrosPublishRate(132),
+            # changeMavrosPublishRate(24),
+            # changeMavrosPublishRate(33),
+            # changeMavrosPublishRate(132),
+            changeMavrosPublishRate(),
         ]
     )
