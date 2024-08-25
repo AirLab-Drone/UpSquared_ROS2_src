@@ -20,7 +20,7 @@ class Mission:
     WAIT_MODE = -1
     TAKE_OFF_MODE = 0
     LANDING_MODE = 1
-    LANDIND_ON_PLATFORM_MODE = 2
+    LANDING_ON_PLATFORM_MODE = 2
     NAVIGATION_MODE = 3
 
     mode = WAIT_MODE
@@ -63,7 +63,7 @@ class Mission:
             self.WAIT_MODE,
             self.TAKE_OFF_MODE,
             self.LANDING_MODE,
-            self.LANDIND_ON_PLATFORM_MODE,
+            self.LANDING_ON_PLATFORM_MODE,
             self.NAVIGATION_MODE,
         ]:
             return False
@@ -116,7 +116,7 @@ class Mission:
         # 檢查先前模式是否為等待模式，定且設定目前模式為降落至平台模式
         if self.mode != self.WAIT_MODE:
             return False
-        self.__setMode(self.LANDIND_ON_PLATFORM_MODE)
+        self.__setMode(self.LANDING_ON_PLATFORM_MODE)
         # --------------------------------- variable --------------------------------- #
         LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
@@ -140,7 +140,7 @@ class Mission:
         while True:
             # 設定中斷點，如果不是降落模式就直接結束
             # todo 檢查thread結束後是否會釋放記憶體
-            if self.mode != self.LANDIND_ON_PLATFORM_MODE:
+            if self.mode != self.LANDING_ON_PLATFORM_MODE:
                 self.controller.setZeroVelocity()
                 return False
             # get downward aruco coordinate

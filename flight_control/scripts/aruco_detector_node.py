@@ -15,10 +15,11 @@ from aruco_msgs.msg import Marker, MarkerArray
 
 class ArucoDetector(Node):
     """
-    camera coordinate: 
-    x 軸: 向右為正，向左為負  
-    y 軸: 向後為正，向前為負  
-    z 軸: 遠離為正，靠近為負  
+    以無人機中心為原點
+    camera coordinate:
+    x 軸: 向右為正，向左為負
+    y 軸: 向後為正，向前為負
+    z 軸: 遠離為正，靠近為負
     rotate deg: 相機離0度的偏移角度，順時針為正
     """
 
@@ -49,14 +50,18 @@ class ArucoDetector(Node):
             self.get_logger().info("connecting to camera")
             self.cap = cv2.VideoCapture(0)
             # -------------------------------- 設定以MJPG格式讀取 ------------------------------- #
-            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('m', 'j', 'p', 'g'))
-            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+            self.cap.set(
+                cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc("m", "j", "p", "g")
+            )
+            self.cap.set(
+                cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc("M", "J", "P", "G")
+            )
 
             # ----------------------------------- 消除頻閃 ----------------------------------- #
-            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0) # 先開啟自動曝光 
-            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0) # 再關閉自動曝光 
-            #TODO 降落時自動調整曝光值
-            
+            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0)  # 先開啟自動曝光
+            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0)  # 再關閉自動曝光
+            # TODO 降落時自動調整曝光值
+
             self.get_logger().info("connected to camera")
         print(f"cap: {self.cap}")
 
@@ -84,7 +89,7 @@ class ArucoDetector(Node):
         aruco_params = cv2.aruco.DetectorParameters()
         self.detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
         if save_video:
-            # save with mp4 
+            # save with mp4
             ret, frame = self.cap.read()
             while not ret:
                 ret, frame = self.cap.read()
@@ -127,12 +132,20 @@ class ArucoDetector(Node):
                     # print(aruco.getCoordinate())
                 coord = aruco.getCoordinate()
                 try:
-                    formatted_coord = f'{id}: {coord[0]:.3f}, {coord[1]:.3f}, {coord[2]:.3f}, {coord[3]:.3f}, {coord[4]:.3f}, {coord[5]:.3f}'
-                    cv2.putText(self.frame, formatted_coord,  (10, count*50 + 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    formatted_coord = f"{id}: {coord[0]:.3f}, {coord[1]:.3f}, {coord[2]:.3f}, {coord[3]:.3f}, {coord[4]:.3f}, {coord[5]:.3f}"
+                    cv2.putText(
+                        self.frame,
+                        formatted_coord,
+                        (10, count * 50 + 50),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 255, 0),
+                        2,
+                    )
                 except:
                     pass
                 count = count + 1
-                
+
             if hasattr(self, "out") and self.out is not None:
                 self.frame = cv2.aruco.drawDetectedMarkers(
                     self.frame, corners, ids, (0, 255, 0)
@@ -167,7 +180,7 @@ class ArucoDetector(Node):
         # if key == ord("q"):
         #     self.stop()
         # elif key == ord("a"):
-        #     self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0) # 先開啟自動曝光 
+        #     self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0) # 先開啟自動曝光
         #     self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0) # 再關閉自動曝光
 
     def get_cloest_aruco_callback(self):
@@ -236,8 +249,8 @@ class ArucoDetector(Node):
         rotate_deg = math.radians(rotate_deg)
         temp_x = marker.x
         temp_y = marker.y
-        marker.x = temp_x * math.cos(rotate_deg) - temp_y * math.sin(rotate_deg)
-        marker.y = temp_x * math.sin(rotate_deg) + temp_y * math.cos(rotate_deg)
+        marker.x = temp_x * math.cos(rotate_deg) + temp_y * math.sin(rotate_deg)
+        marker.y = -temp_x * math.sin(rotate_deg) + temp_y * math.cos(rotate_deg)
         marker.x += offset_x
         marker.y += offset_y
         return marker
