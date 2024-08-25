@@ -45,12 +45,18 @@ class ArucoDetector(Node):
         else:
             self.get_logger().info("connecting to camera")
             self.cap = cv2.VideoCapture(0)
-            # self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('m', 'j', 'p', 'g'))
-            # self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+            # -------------------------------- 設定以MJPG格式讀取 ------------------------------- #
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('m', 'j', 'p', 'g'))
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+
+            # ----------------------------------- 消除頻閃 ----------------------------------- #
+            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0) # 先開啟自動曝光 
+            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0) # 再關閉自動曝光 
+            #TODO 降落時自動調整曝光值
+            
             self.get_logger().info("connected to camera")
         print(f"cap: {self.cap}")
-        # if type(self.cap) is cv2.VideoCapture:
-        #     self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
+
         self.frame = None
         # FPS debug
         self.count = 0
@@ -75,7 +81,7 @@ class ArucoDetector(Node):
         aruco_params = cv2.aruco.DetectorParameters()
         self.detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
         if save_video:
-            # save with mp4
+            # save with mp4 
             ret, frame = self.cap.read()
             while not ret:
                 ret, frame = self.cap.read()
@@ -153,10 +159,16 @@ class ArucoDetector(Node):
             self.start_time = self.get_clock().now()
         # ------------------------------- aruco status ------------------------------- #
         # cv2.imshow("frame", self.frame)
-        # if cv2.waitKey(1) & 0xFF == ord("q"):
+        # key = cv2.waitKey(1) & 0xFF
+
+        # if key == ord("q"):
         #     self.stop()
+        # elif key == ord("a"):
+        #     self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0) # 先開啟自動曝光 
+        #     self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0) # 再關閉自動曝光
 
     def get_cloest_aruco_callback(self):
+
         closest_aruco = None
         for aruco in self.arucoList:
             id = aruco.id
