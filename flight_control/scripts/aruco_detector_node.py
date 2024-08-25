@@ -15,8 +15,11 @@ from aruco_msgs.msg import Marker, MarkerArray
 
 class ArucoDetector(Node):
     """
-    坐標系:marker相對於相機, x: 向右為正, y: 向後為正, z: 遠離相機為正, marker順時針旋轉為正
-    marker offset: marker相對於降落點的偏移量，marker向右偏移為x正，marker向後偏移為y正，marker向下（遠離相機）偏移為z正，marker順時針旋轉為正
+    camera coordinate: 
+    x 軸: 向右為正，向左為負  
+    y 軸: 向後為正，向前為負  
+    z 軸: 遠離為正，靠近為負  
+    rotate deg: 相機離0度的偏移角度，順時針為正
     """
 
     # #-----------------setting-----------------
@@ -96,7 +99,7 @@ class ArucoDetector(Node):
         self.aruco_publisher = self.create_publisher(MarkerArray, "aruco_markers", 10)
         self.cloest_aruco_publisher = self.create_publisher(Marker, "cloest_aruco", 10)
         # ------------------------------- start detect ------------------------------- #
-        timer_period = 0.01  # seconds
+        timer_period = 0.1  # seconds
         self.create_timer(timer_period, self.run)
         self.create_timer(timer_period, self.get_cloest_aruco_callback)
 
@@ -228,14 +231,15 @@ class ArucoDetector(Node):
         @param offset_y: y offset, 相機離中心點的前後偏移, 向後為正
         @return: a marker with new coordinate
         """
+
         marker.yaw = (marker.yaw + rotate_deg) % 360
         rotate_deg = math.radians(rotate_deg)
         temp_x = marker.x
         temp_y = marker.y
         marker.x = temp_x * math.cos(rotate_deg) - temp_y * math.sin(rotate_deg)
         marker.y = temp_x * math.sin(rotate_deg) + temp_y * math.cos(rotate_deg)
-        marker.x -= offset_x
-        marker.y -= offset_y
+        marker.x += offset_x
+        marker.y += offset_y
         return marker
 
     def addNewAruco(self, marker_id, corner):
