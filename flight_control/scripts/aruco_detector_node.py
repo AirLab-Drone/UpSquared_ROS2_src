@@ -45,8 +45,8 @@ class ArucoDetector(Node):
         else:
             self.get_logger().info("connecting to camera")
             self.cap = cv2.VideoCapture(0)
-            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('m', 'j', 'p', 'g'))
-            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+            # self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('m', 'j', 'p', 'g'))
+            # self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
             self.get_logger().info("connected to camera")
         print(f"cap: {self.cap}")
         # if type(self.cap) is cv2.VideoCapture:
@@ -222,8 +222,8 @@ class ArucoDetector(Node):
         temp_y = marker.y
         marker.x = temp_x * math.cos(rotate_deg) - temp_y * math.sin(rotate_deg)
         marker.y = temp_x * math.sin(rotate_deg) + temp_y * math.cos(rotate_deg)
-        marker.x += offset_x
-        marker.y += offset_y
+        marker.x -= offset_x
+        marker.y -= offset_y
         return marker
 
     def addNewAruco(self, marker_id, corner):
@@ -253,9 +253,9 @@ def main():
 
     aruco_detector = ArucoDetector(
         save_video=True,
-        rotate_deg=0,
+        rotate_deg=180,
         offset_x=0,
-        offset_y=0,
+        offset_y=0.125,
     )
     rclpy.spin(aruco_detector)
     aruco_detector.destroy_node()

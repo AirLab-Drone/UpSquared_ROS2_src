@@ -121,7 +121,7 @@ class Mission:
         LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
         MAX_DOWN_SPEED = 0.15  # 速度 單位:公尺/秒
-        MAX_YAW = 25 * 3.14 / 180  # 15度/s
+        MAX_YAW = 15 * 3.14 / 180  # 15度/s
         DOWNWARD_SPEED = -0.2  # the distance to move down,必需要為負
         last_moveup_time = rclpy.clock.Clock().now()
         last_not_in_range_time = rclpy.clock.Clock().now()
@@ -194,7 +194,7 @@ class Mission:
             move_yaw = pid_move_yaw.update(marker_yaw * 3.14 / 180, current_time)
             # ---------------------------------- 限制最大速度 ---------------------------------- #
             different_move = math.sqrt(move_x**2 + move_y**2)
-            if -90 < marker_yaw < 90:
+            if -30 < marker_yaw < 30:
                 max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
                 move_x = move_x / different_move * max_speed_temp
                 move_y = move_y / different_move * max_speed_temp
