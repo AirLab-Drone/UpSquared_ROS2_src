@@ -225,10 +225,9 @@ class ArucoDetector(Node):
             self.cloest_aruco_publisher.publish(marker)
         else:
             marker = closest_aruco.getCoordinateWithMarkerMsg()
-            if self.rotate_deg != 0:
-                marker = self.rotateAndOffsetArucoCoordinate(
-                    marker, self.rotate_deg, self.offset_x, self.offset_y
-                )
+            marker = self.rotateAndOffsetArucoCoordinate(
+                marker, self.rotate_deg, self.offset_x, self.offset_y
+            )
             self.cloest_aruco_publisher.publish(marker)
         self.get_logger().info(
             f"id: {marker.id} x: {marker.x:.2f}, y: {marker.y:.2f}, z: {marker.z:.2f}, yaw: {marker.yaw:.2f}, pitch: {marker.pitch:.2f}, roll: {marker.roll:.2f}"

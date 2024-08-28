@@ -212,7 +212,7 @@ class Mission:
                 f"move_x:   {move_x:.2f}, move_y:   {move_y:.2f}, move_z:   {move_z:.2f}, move_yaw:   {move_yaw:.2f}"
             )
             print(
-                f"marker_x: {marker_x:.2f}, marker_y: {marker_y:.2f}, marker_z: {marker_z:.2f}, marker_yaw: {marker_yaw:.2f}"
+                f"id: {closest_aruco.id}, marker_x: {marker_x:.2f}, marker_y: {marker_y:.2f}, marker_z: {marker_z:.2f}, marker_yaw: {marker_yaw:.2f}"
             )
             # ------------------ check distance and yaw, whether landing ----------------- #
             if (
