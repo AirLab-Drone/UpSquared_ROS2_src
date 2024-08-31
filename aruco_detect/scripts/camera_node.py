@@ -19,6 +19,7 @@ class CaptureImage(Node):
 
     def __init__(self):
         super().__init__("camera_node")
+
         # VGA 180fps
         self.mtx = np.array(
             [
@@ -31,7 +32,19 @@ class CaptureImage(Node):
             [[-0.04673894, 0.12198613, 0.00533764, 0.00095581, -0.15779023]]
         )
 
+        # ----------------------------------- 相機設定 ----------------------------------- #
         self.cap = cv2.VideoCapture(0)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.cap.set(cv2.CAP_PROP_FPS, 180)
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+
+        # 取得當前FPS
+        actual_fps = self.cap.get(cv2.CAP_PROP_FPS)
+        print(f"Actual FPS: {actual_fps}")
+
+
+
         self.bridge = CvBridge()
         self.msg = Image()
 
@@ -44,6 +57,11 @@ class CaptureImage(Node):
     def timer_callback(self):
         # Capture frame-by-frame
         ret, frame = self.cap.read()
+
+        # TODO: 若相機無法啟動, 無人機要做出相應的處理
+        if not ret:
+            self.get_logger().info("Can't receive frame (stream end?). Exiting ...")
+            return
 
         # undistort
         h, w = frame.shape[:2]
