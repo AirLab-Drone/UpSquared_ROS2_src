@@ -58,8 +58,10 @@ class ArucoDetector(Node):
             )
 
             # ----------------------------------- 消除頻閃 ----------------------------------- #
+            # self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0)  # 再關閉自動曝光
             self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0)  # 先開啟自動曝光
-            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0)  # 再關閉自動曝光
+            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0) # 再關閉自動曝光
+            self.cap.set(cv2.CAP_PROP_EXPOSURE, -10)
             # TODO 降落時自動調整曝光值
 
             self.get_logger().info("connected to camera")
