@@ -60,6 +60,7 @@ class CaptureImage(Node):
 
         self.set_auto_exposure_srv = self.create_service(SetBool, 'set_auto_exposure', self.set_auto_exposure_callback)
         
+        # TODO: 設定曝光值srv, 曝光值寫成ros變數
         self.set_exposure_srv = self.create_service(SetFloat, 'set_exposure', self.set_exposure_callback)
 
     def timer_callback(self):
