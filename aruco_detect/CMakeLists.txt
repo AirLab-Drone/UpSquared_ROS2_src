@@ -21,11 +21,13 @@ ament_python_install_package(${PROJECT_NAME}) # for importing the package in "ar
 
 install(PROGRAMS
   scripts/camera_node.py
+  scripts/detect_aruco_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
 
 install(DIRECTORY
+  config
   launch
   DESTINATION share/${PROJECT_NAME}/
 )

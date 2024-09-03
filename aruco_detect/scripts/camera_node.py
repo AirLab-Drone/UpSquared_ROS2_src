@@ -2,8 +2,11 @@
 
 
 """
-此節點用於捕捉圖像並發布校正畸變後的圖像
+此節點用於捕捉圖像並發布圖像
 發布圖像為 sensor_msgs.msg.Image 型態
+
+設定曝光值:
+    ros2 param set /camera_node exposure 100.0
 """
 
 import cv2
@@ -13,8 +16,9 @@ from cv_bridge import CvBridge
 
 import rclpy
 from rclpy.node import Node
+from rcl_interfaces.msg import ParameterType, ParameterDescriptor, FloatingPointRange, SetParametersResult
 from sensor_msgs.msg import Image
-from std_srvs.srv import SetBool, SetFloat32
+from std_srvs.srv import SetBool
 
 
 class CaptureImage(Node):
@@ -22,17 +26,28 @@ class CaptureImage(Node):
     def __init__(self):
         super().__init__("camera_node")
 
-        # # VGA 180fps
-        # self.mtx = np.array(
-        #     [
-        #         [479.23864074, 0.0, 322.41904053],
-        #         [0.0, 478.87010769, 208.59056289],
-        #         [0.0, 0.0, 1.0],
-        #     ]
-        # )
-        # self.dist = np.array(
-        #     [[-0.04673894, 0.12198613, 0.00533764, 0.00095581, -0.15779023]]
-        # )
+
+        # ---------------------- Define the parameter descriptor --------------------- #
+        exposure_descriptor = ParameterDescriptor(
+            description=(
+                "camera's exposure value as a positive double (ms)"
+            ),
+            type = ParameterType.PARAMETER_DOUBLE,
+            # floating_point_range = [FloatingPointRange(
+            #     from_value = 0.0,   # 曝光值最小值
+            #     to_value = 1000000.0    # 曝光值最大值
+            # )],
+        )
+
+        # Define the parameter with a descriptor
+        self.declare_parameter(
+            "exposure", 20.0, exposure_descriptor
+        ) 
+        # Register a callback for parameter changes
+        self.add_on_set_parameters_callback(self.parameter_callback)
+
+
+
 
         # ----------------------------------- 相機設定 ----------------------------------- #
         self.cap = cv2.VideoCapture(0)
@@ -42,6 +57,7 @@ class CaptureImage(Node):
         self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
         self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0)
         self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0)
+        self.update_exposure(self.get_parameter("exposure").get_parameter_value().double_value)
 
         # 取得當前FPS
         self.actual_fps = self.cap.get(cv2.CAP_PROP_FPS)
@@ -55,13 +71,28 @@ class CaptureImage(Node):
         self.start_time = self.get_clock().now()
         self.fps = 0
 
-        timer_period = 1.0 / self.actual_fps  # 計時器周期設為相機實際 FPS
+        timer_period = 1.0 / 180.0  # 計時器周期設為相機實際 FPS
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
         self.set_auto_exposure_srv = self.create_service(SetBool, 'set_auto_exposure', self.set_auto_exposure_callback)
         
-        # TODO: 設定曝光值srv, 曝光值寫成ros變數
-        self.set_exposure_srv = self.create_service(SetFloat, 'set_exposure', self.set_exposure_callback)
+
+    def parameter_callback(self, params):
+
+        for param in params:
+            print(f"Received param: {param.name}, type: {param.type_}, value: {param.value}")
+            if param.name == "exposure":
+                self.update_exposure(param.value)
+        return SetParametersResult(successful=True)
+
+
+    def update_exposure(self, exposure_value):
+        # self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0)  
+        # self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0)   # 關閉自動曝光
+        self.cap.set(cv2.CAP_PROP_EXPOSURE, exposure_value)
+        self.cap.read()  # 捕获一帧以确保设置生效
+        self.get_logger().info(f"Exposure set to: {exposure_value}")
+
 
     def timer_callback(self):
         # 捕捉每一幀
