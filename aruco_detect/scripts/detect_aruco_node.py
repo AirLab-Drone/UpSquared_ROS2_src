@@ -60,6 +60,28 @@ class ArucoDetect(Node):
             [[-0.04673894, 0.12198613, 0.00533764, 0.00095581, -0.15779023]]
         )
 
+    def draw_custom_axis(self, frame, rvec, tvec, marker_length):
+        axis_length = marker_length * 0.8  # 坐標軸長度
+        axis = np.float32([
+            [0, 0, 0],        # 原點
+            [axis_length, 0, 0], # X 軸
+            [0, axis_length, 0], # Y 軸
+            [0, 0, axis_length]  # Z 軸
+        ]).reshape(-1, 3)
+        
+        # 將3D點投影到2D圖像上
+        imgpts, _ = cv2.projectPoints(axis, rvec, tvec, self.mtx, self.dist)
+
+        imgpts = np.int32(imgpts).reshape(-1, 2)
+        
+        # 繪製坐標軸
+        origin = tuple(imgpts[0].ravel())
+        frame = cv2.line(frame, origin, tuple(imgpts[1].ravel()), (0, 0, 255), 5)  # X 紅色
+        frame = cv2.line(frame, origin, tuple(imgpts[2].ravel()), (0, 255, 0), 5)  # Y 綠色
+        frame = cv2.line(frame, origin, tuple(imgpts[3].ravel()), (255, 0, 0), 5)  # Z 藍色
+
+        return frame
+
     def image_callback(self, msg):
         # 将ROS图像消息转换为OpenCV图像
         frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -82,7 +104,7 @@ class ArucoDetect(Node):
 
                     # 在图像上绘制Aruco标记及其轴
                     cv2.aruco.drawDetectedMarkers(frame, [corners[i]])
-                    # cv2.aruco.drawAxis(frame, self.mtx, self.dist, rvec, tvec, 0.1)
+                    frame = self.draw_custom_axis(frame, rvec, tvec, marker_length)
 
                     self.get_logger().info(f"Detected Aruco ID: {marker_id}, Position: {tvec.flatten()}, Rotation: {rvec.flatten()}")
 
