@@ -25,22 +25,23 @@ class ArucoDetect(Node):
 
         package_share_directory = get_package_share_directory('aruco_detect')
         config_file_path = os.path.join(package_share_directory, 'config', 'aruco_markers.yaml')
-        try:
-            # 加载配置文件
-            with open(config_file_path, 'r') as config_file:
-                self.aruco_markers = yaml.safe_load(config_file)
-            # 使用 yaml.dump 格式化输出
-            formatted_yaml = yaml.dump(self.aruco_markers, sort_keys=False, indent=2)
-            self.get_logger().info(f"Loaded Aruco markers:\n{formatted_yaml}")
 
-        except:
+        # 检查文件是否存在
+        if not os.path.exists(config_file_path):
             self.get_logger().error(f"Cannot load Aruco markers config file: {config_file_path}")
             self.destroy_node()
             rclpy.shutdown()
             return
-            
 
-        # # VGA 180fps
+        # 加载配置文件
+        with open(config_file_path, 'r') as config_file:
+            self.aruco_markers = yaml.safe_load(config_file)
+        # 使用 yaml.dump 格式化输出
+        formatted_yaml = yaml.dump(self.aruco_markers, sort_keys=False, indent=2)
+        self.get_logger().info(f"Loaded Aruco markers:\n{formatted_yaml}")
+
+    
+        # VGA 180fps
         self.mtx = np.array(
             [
                 [479.23864074, 0.0, 322.41904053],
