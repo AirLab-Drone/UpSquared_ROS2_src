@@ -14,6 +14,9 @@ import rclpy
 from rclpy.node import Node
 from ament_index_python.packages import get_package_share_directory
 from sensor_msgs.msg import Image
+from aruco_msgs.msg import Marker
+
+from aruco_detect.kalman_filter import KalmanFilter
 
 
 
@@ -60,7 +63,7 @@ class ArucoDetect(Node):
             [[-0.04673894, 0.12198613, 0.00533764, 0.00095581, -0.15779023]]
         )
 
-    def draw_custom_axis(self, frame, rvec, tvec, marker_length):
+    def draw_axis_and_id(self, frame, rvec, tvec, marker_length, marker_id):
         axis_length = marker_length * 0.8  # 坐標軸長度
         axis = np.float32([
             [0, 0, 0],        # 原點
@@ -79,6 +82,18 @@ class ArucoDetect(Node):
         frame = cv2.line(frame, origin, tuple(imgpts[1].ravel()), (0, 0, 255), 5)  # X 紅色
         frame = cv2.line(frame, origin, tuple(imgpts[2].ravel()), (0, 255, 0), 5)  # Y 綠色
         frame = cv2.line(frame, origin, tuple(imgpts[3].ravel()), (255, 0, 0), 5)  # Z 藍色
+
+        # 在原点旁边添加 Aruco ID 标签，首先繪製黑色邊框，再繪製白色文字
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.8
+        thickness = 2
+
+        # 繪製黑色邊框 (用較粗的線條)
+        cv2.putText(frame, f'{marker_id}', (origin[0] + 10, origin[1] + 20), font, font_scale, (0, 0, 0), thickness + 2, cv2.LINE_AA)
+        
+        # 繪製白色文字 (用較細的線條)
+        cv2.putText(frame, f'{marker_id}', (origin[0] + 10, origin[1] + 20), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+
 
         return frame
 
@@ -103,8 +118,8 @@ class ArucoDetect(Node):
                     rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(corners[i], marker_length, self.mtx, self.dist)
 
                     # 在图像上绘制Aruco标记及其轴
-                    cv2.aruco.drawDetectedMarkers(frame, [corners[i]])
-                    frame = self.draw_custom_axis(frame, rvec, tvec, marker_length)
+                    # cv2.aruco.drawDetectedMarkers(frame, [corners[i]])
+                    frame = self.draw_axis_and_id(frame, rvec, tvec, marker_length, marker_id)
 
                     self.get_logger().info(f"Detected Aruco ID: {marker_id}, Position: {tvec.flatten()}, Rotation: {rvec.flatten()}")
 
