@@ -14,6 +14,7 @@ import rclpy
 from rclpy.node import Node
 from ament_index_python.packages import get_package_share_directory
 from sensor_msgs.msg import Image
+from std_msgs.msg import Header
 from aruco_msgs.msg import Marker
 
 from aruco_detect.kalman_filter import KalmanFilter
@@ -24,6 +25,7 @@ class ArucoDetect(Node):
     def __init__(self):
         super().__init__("aruco_detect")
 
+    
         package_share_directory = get_package_share_directory('aruco_detect')
         config_file_path = os.path.join(package_share_directory, 'config', 'aruco_markers.yaml')
 
@@ -42,6 +44,9 @@ class ArucoDetect(Node):
         self.get_logger().info(f"Loaded Aruco markers:\n{formatted_yaml}")
 
     
+        self.marker_publisher = self.create_publisher(Marker, "/aruco/marker", 10)
+
+
         # 订阅图像话题
         self.subscription = self.create_subscription(
             Image,
@@ -121,11 +126,34 @@ class ArucoDetect(Node):
                     # cv2.aruco.drawDetectedMarkers(frame, [corners[i]])
                     frame = self.draw_axis_and_id(frame, rvec, tvec, marker_length, marker_id)
 
+                    self.publish_marker(marker_id, tvec, rvec)
+
                     self.get_logger().info(f"Detected Aruco ID: {marker_id}, Position: {tvec.flatten()}, Rotation: {rvec.flatten()}")
 
         # 显示图像 (调试时使用)
         cv2.imshow("Aruco Detection", frame)
         cv2.waitKey(1)
+
+
+    def publish_marker(self, marker_id, tvec, rvec):
+        # 創建Marker消息
+        marker_msg = Marker()
+        marker_msg.header = Header()
+        marker_msg.header.stamp = self.get_clock().now().to_msg()
+        marker_msg.header.frame_id = "camera"
+
+        marker_msg.id = int(marker_id)
+        marker_msg.x = tvec[0][0][0]
+        marker_msg.y = tvec[0][0][1]
+        marker_msg.z = tvec[0][0][2]
+        marker_msg.roll = rvec[0][0][0]
+        marker_msg.pitch = rvec[0][0][1]
+        marker_msg.yaw = rvec[0][0][2]
+        marker_msg.confidence = 1.0  # 假設檢測到的結果可信
+
+        # 發布Marker消息
+        self.marker_publisher.publish(marker_msg)
+        # self.get_logger().info(f"Published Marker ID: {marker_id}")
 
 
 def main(args=None):
