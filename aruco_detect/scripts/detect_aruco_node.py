@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-此節點用於偵測aruco, 並發布位置
+此節點用於偵測aruco, 並發布Marker消息 
 """
 
 import cv2
@@ -13,17 +13,23 @@ from cv_bridge import CvBridge
 import rclpy
 from rclpy.node import Node
 from ament_index_python.packages import get_package_share_directory
+from rcl_interfaces.msg import ParameterDescriptor
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 from aruco_msgs.msg import Marker
-
-from aruco_detect.kalman_filter import KalmanFilter
 
 
 
 class ArucoDetect(Node):
     def __init__(self):
         super().__init__("aruco_detect")
+
+        self.declare_parameter(
+            "show_image", 
+            False,
+            ParameterDescriptor(description="Boolean to decide whether to display the OpenCV image or not")
+            )
+        self.show_image = self.get_parameter("show_image").get_parameter_value().bool_value
 
     
         package_share_directory = get_package_share_directory('aruco_detect')
@@ -44,7 +50,8 @@ class ArucoDetect(Node):
         self.get_logger().info(f"Loaded Aruco markers:\n{formatted_yaml}")
 
     
-        self.marker_publisher = self.create_publisher(Marker, "/aruco/marker", 10)
+        self.marker_publisher_0 = self.create_publisher(Marker, "/aruco/marker/id_0", 10)
+        self.marker_publisher_6 = self.create_publisher(Marker, "/aruco/marker/id_6", 10)
 
 
         # 订阅图像话题
@@ -115,7 +122,6 @@ class ArucoDetect(Node):
 
         # 检测Aruco标记
         corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
-
         if ids is not None:
             for i, marker_id in enumerate(ids.flatten()):
                 if str(marker_id) in self.aruco_markers['aruco_markers']:
@@ -130,10 +136,10 @@ class ArucoDetect(Node):
 
                     self.get_logger().info(f"Detected Aruco ID: {marker_id}, Position: {tvec.flatten()}, Rotation: {rvec.flatten()}")
 
-        # 显示图像 (调试时使用)
-        cv2.imshow("Aruco Detection", frame)
-        cv2.waitKey(1)
-
+        # 根據參數是否顯示圖像
+        if self.show_image:
+            cv2.imshow("Aruco Detection", frame)
+            cv2.waitKey(1)
 
     def publish_marker(self, marker_id, tvec, rvec):
         # 創建Marker消息
@@ -151,8 +157,11 @@ class ArucoDetect(Node):
         marker_msg.yaw = rvec[0][0][2]
         marker_msg.confidence = 1.0  # 假設檢測到的結果可信
 
-        # 發布Marker消息
-        self.marker_publisher.publish(marker_msg)
+        # 根據marker_id選擇對應的publisher
+        if marker_id == 0:
+            self.marker_publisher_0.publish(marker_msg)
+        elif marker_id == 6:
+            self.marker_publisher_6.publish(marker_msg)
         # self.get_logger().info(f"Published Marker ID: {marker_id}")
 
 
