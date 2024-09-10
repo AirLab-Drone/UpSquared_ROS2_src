@@ -62,6 +62,8 @@ class ArucoDetect(Node):
             6: self.create_publisher(Marker, "/aruco/marker/id_6", 10),
         }
 
+        self.closest_marker_publisher = self.create_publisher(Marker, '/closest_marker', 10)
+
         # 订阅图像话题
         self.subscription = self.create_subscription(
             Image, "/camera/image_raw", self.image_callback, 10
@@ -167,11 +169,18 @@ class ArucoDetect(Node):
                     )
 
                     self.publish_marker(marker_id, tvec, rvec)
+        else:
+            self.closest_marker_publisher.publish(self.create_empty_marker())
+            self.get_logger().info(
+                f"No Aruco markers detected in the image"
+            )
+
 
         # 根據參數是否顯示圖像
         if self.show_image:
             cv2.imshow("Aruco Detection", frame)
             cv2.waitKey(1)
+
 
     def rvec_to_euler_angles(self, rvec):
         R_mat, _ = cv2.Rodrigues(rvec[0])
@@ -208,6 +217,21 @@ class ArucoDetect(Node):
                 f"Published marker for ID {marker_id}: x={marker_msg.x:.4f}, y={marker_msg.y:.4f}, z={marker_msg.z:.4f}, roll={marker_msg.roll:.4f}, pitch={marker_msg.pitch:.4f}, yaw={marker_msg.yaw:.4f}"
             )
 
+    def create_empty_marker(self):
+        """創建confidence為0的空Marker消息"""
+        empty_marker = Marker()
+        empty_marker.header = Header()
+        empty_marker.header.stamp = self.get_clock().now().to_msg()
+        empty_marker.header.frame_id = 'camera_frame'
+        empty_marker.id = 0  
+        empty_marker.x = 0.0
+        empty_marker.y = 0.0
+        empty_marker.z = 0.0
+        empty_marker.roll = 0.0
+        empty_marker.pitch = 0.0
+        empty_marker.yaw = 0.0
+        empty_marker.confidence = 0.0
+        return empty_marker
 
 def main(args=None):
     rclpy.init(args=args)
