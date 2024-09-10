@@ -31,8 +31,8 @@ class MarkerDistanceNode(Node):
         """處理來自標記的訊息"""
         self.markers[msg.id] = msg
         self.markers[msg.id].confidence = 1.0  # 如果接收到標記，將信任度設為1.0
-        distance_0 = 0
-        distance_6 = 0
+        distance_0 = float("inf")
+        distance_6 = float("inf")
 
         # 確認標記是否接收到，並分別處理
         if self.markers[0] is not None and self.markers[6] is not None:
