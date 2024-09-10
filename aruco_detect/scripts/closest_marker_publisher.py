@@ -46,13 +46,13 @@ class MarkerDistanceNode(Node):
             # 只接收到ID 0
             distance_0 = self.calculate_distance(self.markers[0])
             distance_6 = float("inf")
-            print("distance_6: ", distance_6)
+            print("only distance_6: ", distance_6)
 
         elif self.markers[6] is not None and self.markers[0] is None:
             # 只接收到ID 6
             distance_0 = float("inf")
             distance_6 = self.calculate_distance(self.markers[6])
-            print("distance_0: ", distance_0)
+            print("only distance_0: ", distance_0)
 
         # if distance_0 < distance_6:
         #     self.publish_marker(self.markers[0], "Marker ID 0 is closer")
