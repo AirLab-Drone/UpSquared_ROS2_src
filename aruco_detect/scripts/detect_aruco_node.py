@@ -144,6 +144,7 @@ class ArucoDetect(Node):
             cv2.LINE_AA,
         )
 
+
     def image_callback(self, msg):
         # 将ROS图像消息转换为OpenCV图像
         frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -152,13 +153,16 @@ class ArucoDetect(Node):
         # 检测Aruco标记
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
         corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict)
+        
 
+        # 檢查是否有檢測到Aruco標記
         if ids is not None:
+            found_valid_marker = False
+
             for i, marker_id in enumerate(ids.flatten()):
+                # 檢查是否是ID 0或6
                 if str(marker_id) in self.aruco_markers["aruco_markers"]:
-                    marker_length = self.aruco_markers["aruco_markers"][str(marker_id)][
-                        "marker_length"
-                    ]
+                    marker_length = self.aruco_markers["aruco_markers"][str(marker_id)]["marker_length"]
                     rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(
                         corners[i], marker_length, self.mtx, self.dist
                     )
@@ -168,16 +172,28 @@ class ArucoDetect(Node):
                         frame, rvec, tvec, marker_length, marker_id
                     )
 
+                    # 发布有效的Aruco标记
                     self.publish_marker(marker_id, tvec, rvec)
+                    found_valid_marker = True  # 表示找到了一個有效的標記
+
+                # else:
+                #     self.get_logger().info(f"Detected marker ID {marker_id}, but it's not 0 or 6")
+            
+            if not found_valid_marker:
+                # 如果沒有找到有效的標記，發布空的Marker消息
+                self.closest_marker_publisher.publish(self.create_empty_marker())
+                self.get_logger().info(f"No valid Aruco markers (ID 0 or 6) detected in the image")
+
         else:
+            # 如果沒有找到有效的標記，發布空的Marker消息
             self.closest_marker_publisher.publish(self.create_empty_marker())
-            self.get_logger().info(
-                f"No Aruco markers detected in the image"
-            )
+            self.get_logger().info(f"No valid Aruco markers in the image")
 
 
         # 根據參數是否顯示圖像
         if self.show_image:
+            # 在圖片中間畫一點
+            cv2.circle(frame, (320, 240), 5, (255, 255, 255), -1)
             cv2.imshow("Aruco Detection", frame)
             cv2.waitKey(1)
 
