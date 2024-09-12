@@ -9,12 +9,26 @@ import rclpy
 from rclpy.node import Node
 from aruco_msgs.msg import Marker
 from std_msgs.msg import Header
+from rcl_interfaces.msg import ParameterDescriptor
+from rcl_interfaces.msg import ParameterType
 
 from aruco_detect.kalman_filter import KalmanFilter
 
 class KalmanFilterNode(Node):
     def __init__(self):
         super().__init__('kalman_filter_node')
+
+
+        self.declare_parameter(
+            "debug",
+            False, 
+            ParameterDescriptor(
+                description="Enable debug mode",
+                type=ParameterType.PARAMETER_BOOL
+            ),
+        )
+        self.debug = self.get_parameter("debug").get_parameter_value().bool_value
+
 
         # 初始化兩個卡爾曼濾波器
         self.kalman_filters = {
@@ -58,7 +72,8 @@ class KalmanFilterNode(Node):
 
             # 發布濾波後的Marker消息
             self.marker_publishers[marker_id].publish(filtered_marker)
-            self.log_filtered_marker(marker_id, filtered_marker)
+            if self.debug:
+                self.log_filtered_marker(marker_id, filtered_marker)
 
         return marker_callback
 
@@ -67,7 +82,11 @@ class KalmanFilterNode(Node):
         記錄濾波後的Marker消息。
         """
         self.get_logger().info(
-            f"Filter marker for ID {marker_id}: x={marker_msg.x:.4f}, y={marker_msg.y:.4f}, z={marker_msg.z:.4f}, roll={marker_msg.roll:.4f}, pitch={marker_msg.pitch:.4f}, yaw={marker_msg.yaw:.4f}"
+            f"\n"
+            f"Kalman Filter Marker\n"
+            f"  ID = {marker_id}\n"
+            f"  x = {marker_msg.x:.4f}, y = {marker_msg.y:.4f}, z = {marker_msg.z:.4f}\n"
+            f"  roll = {marker_msg.roll:.4f}, pitch = {marker_msg.pitch:.4f}, yaw = {marker_msg.yaw:.4f}"
         )
 
 def main(args=None):

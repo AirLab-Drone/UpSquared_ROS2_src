@@ -15,6 +15,7 @@ import rclpy
 from rclpy.node import Node
 from ament_index_python.packages import get_package_share_directory
 from rcl_interfaces.msg import ParameterDescriptor
+from rcl_interfaces.msg import ParameterType
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 from aruco_msgs.msg import Marker
@@ -23,6 +24,16 @@ from aruco_msgs.msg import Marker
 class ArucoDetect(Node):
     def __init__(self):
         super().__init__("aruco_detect")
+
+        self.declare_parameter(
+            "debug",
+            False, 
+            ParameterDescriptor(
+                description="Enable debug mode",
+                type=ParameterType.PARAMETER_BOOL
+            ),
+        )
+        self.debug = self.get_parameter("debug").get_parameter_value().bool_value
 
         self.declare_parameter(
             "show_image",
@@ -182,12 +193,16 @@ class ArucoDetect(Node):
             if not found_valid_marker:
                 # 如果沒有找到有效的標記，發布空的Marker消息
                 self.closest_marker_publisher.publish(self.create_empty_marker())
-                self.get_logger().info(f"No valid Aruco markers (ID 0 or 6) detected in the image")
+                self.get_logger().info(
+                    f"No valid Aruco markers in the image",
+                    throttle_duration_sec=0.5)
 
         else:
             # 如果沒有找到有效的標記，發布空的Marker消息
             self.closest_marker_publisher.publish(self.create_empty_marker())
-            self.get_logger().info(f"No valid Aruco markers in the image")
+            self.get_logger().info(
+                f"No valid Aruco markers in the image",
+                throttle_duration_sec=0.5)
 
 
         # 根據參數是否顯示圖像
@@ -229,9 +244,12 @@ class ArucoDetect(Node):
 
         if marker_id in self.marker_publishers:
             self.marker_publishers[marker_id].publish(marker_msg)
-            self.get_logger().info(
-                f"Published marker for ID {marker_id}: x={marker_msg.x:.4f}, y={marker_msg.y:.4f}, z={marker_msg.z:.4f}, roll={marker_msg.roll:.4f}, pitch={marker_msg.pitch:.4f}, yaw={marker_msg.yaw:.4f}"
-            )
+            if self.debug:
+                self.get_logger().info(
+                    f"""ID {marker_id}:\n
+                    x={marker_msg.x:.4f}, y={marker_msg.y:.4f}, z={marker_msg.z:.4f},\n
+                    roll={marker_msg.roll:.4f}, pitch={marker_msg.pitch:.4f}, yaw={marker_msg.yaw:.4f}"""
+                )
 
     def create_empty_marker(self):
         """創建confidence為0的空Marker消息"""

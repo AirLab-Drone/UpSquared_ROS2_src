@@ -101,7 +101,7 @@ class MarkerDistanceNode(Node):
 
         # 計算距離並比較
         closest_marker = self.camera_frame_to_drone_frame(self.calculate_closest_marker())
-        self.publish_marker(closest_marker, f"{closest_marker.id} is the closest marker")
+        self.publish_marker(closest_marker)
 
     def calculate_closest_marker(self):
         """計算距離並回傳最近的標記"""
@@ -166,10 +166,16 @@ class MarkerDistanceNode(Node):
         """計算標記到相機的距離"""
         return math.sqrt(marker.x ** 2 + marker.y ** 2 + marker.z ** 2)
 
-    def publish_marker(self, marker, log_message):
+    def publish_marker(self, marker):
         """發布Marker消息並記錄日誌"""
         self.closest_marker_publisher.publish(marker)
-        self.get_logger().info(log_message)
+        self.get_logger().info(
+            f"\n"
+            f"Closest Marker\n"
+            f"  ID = {marker.id}\n"
+            f"  x = {marker.x:.4f}, y = {marker.y:.4f}, z = {marker.z:.4f}\n"
+            f"  roll = {marker.roll:.4f}, pitch = {marker.pitch:.4f}, yaw = {marker.yaw:.4f}"
+        )
 
 
 

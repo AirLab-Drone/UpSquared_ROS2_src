@@ -58,6 +58,19 @@ class CaptureImage(Node):
 
 
         # ---------------------- Define the parameter descriptor --------------------- #
+
+        # 創建參數描述，並設置類型為布林值
+        self.declare_parameter(
+            "debug",
+            False, 
+            ParameterDescriptor(
+                description="Enable debug mode",
+                type=ParameterType.PARAMETER_BOOL
+            ),
+        )
+        self.debug = self.get_parameter("debug").get_parameter_value().bool_value
+
+
         exposure_descriptor = ParameterDescriptor(
             description=(
                 "camera's exposure value as an integer (ms)"
@@ -132,7 +145,7 @@ class CaptureImage(Node):
         # 如果相機無法啟動，則記錄信息並返回
         # TODO: 若相機無法啟動, 無人機要做出相應的處理
         if not ret:
-            self.get_logger().info("Can't receive frame (stream end?). Exiting ...")
+            self.get_logger().error("Can't receive frame (stream end?). Exiting ...")
             return
 
         # FPS 計算
@@ -143,7 +156,8 @@ class CaptureImage(Node):
 
         if elapsed_seconds > 0.5:
             self.fps = self.frame_count / elapsed_seconds
-            self.get_logger().info(f"Current FPS: {self.fps:.2f}")
+            if self.debug:
+                self.get_logger().info(f"Current FPS: {self.fps:.2f}")
             self.frame_count = 0
             self.start_time = current_time
 
