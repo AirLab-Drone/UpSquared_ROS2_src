@@ -83,21 +83,23 @@ class ArucoDetect(Node):
 
         self.bridge = CvBridge()
 
+
+        #! TODO: 寫成參數
         # # VGA 180fps
-        # self.mtx = np.array(
-        #     [
-        #         [479.23864074, 0.0, 322.41904053],
-        #         [0.0, 478.87010769, 208.59056289],
-        #         [0.0, 0.0, 1.0],
-        #     ]
-        # )
-        # self.dist = np.array(
-        #     [[-0.04673894, 0.12198613, 0.00533764, 0.00095581, -0.15779023]]
-        # )
+        self.mtx = np.array(
+            [
+                [479.23864074, 0.0, 322.41904053],
+                [0.0, 478.87010769, 208.59056289],
+                [0.0, 0.0, 1.0],
+            ]
+        )
+        self.dist = np.array(
+            [[-0.04673894, 0.12198613, 0.00533764, 0.00095581, -0.15779023]]
+        )
 
         # simulation
-        self.mtx = np.array([[554.25625995, 0, 960], [0, 554.25625995, 540], [0.0, 0.0, 1]])
-        self.dist = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
+        # self.mtx = np.array([[554.25625995, 0, 960], [0, 554.25625995, 540], [0.0, 0.0, 1]])
+        # self.dist = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
 
     def draw_axis_and_id(self, frame, rvec, tvec, marker_length, marker_id):
         axis_length = marker_length * 0.8  # 坐標軸長度

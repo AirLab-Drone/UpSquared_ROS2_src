@@ -44,7 +44,7 @@ def generate_launch_description():
             ),
             Node(
                 package="aruco_detect",
-                executable="kalman_node.py",
+                executable="median_filter_node.py",
                 output="screen",
                 parameters=[
                     {"debug": LaunchConfiguration("debug")},  # 將debug傳入節點參數

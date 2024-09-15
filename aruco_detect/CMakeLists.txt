@@ -23,6 +23,7 @@ install(PROGRAMS
   scripts/camera_node.py
   scripts/detect_aruco_node.py
   scripts/kalman_node.py
+  scripts/median_filter_node.py
   scripts/closest_marker_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
