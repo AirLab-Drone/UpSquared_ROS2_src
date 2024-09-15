@@ -68,7 +68,7 @@ class MarkerDistanceNode(Node):
         self.timeout = Duration(seconds=0.1) # 設定超時閾值（0.1秒）
 
         # 創建一個新的Publisher，發布最近的標記
-        self.closest_marker_publisher = self.create_publisher(Marker, '/closest_marker', 10)
+        self.closest_marker_publisher = self.create_publisher(Marker, '/closest_aruco', 10)
         
 
 
@@ -143,16 +143,21 @@ class MarkerDistanceNode(Node):
         # 校正相機的偏移量，將相機座標轉換為無人機中心座標
         transformed_marker = Marker()
         
+        # 如果需要考慮旋轉，這裡可以加入旋轉修正
+        # 此處假設相機的旋轉角度為 0，所以只需保持原值
+        transformed_marker.yaw = (marker.yaw + self.camera_yaw) %360
+        transformed_marker.roll = marker.roll + self.camera_roll
+        transformed_marker.pitch = marker.pitch + self.camera_pitch
+
         # x, y, z 座標校正
+        rotate_deg = math.radians(self.camera_yaw)
+        temp_x = marker.x
+        temp_y = marker.y
+        marker.x = temp_x * math.cos(rotate_deg) + temp_y * math.sin(rotate_deg)
+        marker.y = -temp_x * math.sin(rotate_deg) + temp_y * math.cos(rotate_deg)
         transformed_marker.x = marker.x + self.camera_x
         transformed_marker.y = marker.y + self.camera_y
         transformed_marker.z = marker.z + self.camera_z
-
-        # 如果需要考慮旋轉，這裡可以加入旋轉修正
-        # 此處假設相機的旋轉角度為 0，所以只需保持原值
-        transformed_marker.roll = marker.roll + self.camera_roll
-        transformed_marker.pitch = marker.pitch + self.camera_pitch
-        transformed_marker.yaw = marker.yaw + self.camera_yaw
 
         # 保留其他屬性
         transformed_marker.id = marker.id

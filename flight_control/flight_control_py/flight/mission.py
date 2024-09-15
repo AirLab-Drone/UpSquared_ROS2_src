@@ -31,10 +31,10 @@ class Mission:
         self.controller = controller
         self.flight_info = flight_info
         self.node = node
-        self.cloest_aruco = None
+        self.closest_aruco = None
         # self.getCloestArucoClient = self.node.create_client(GetCloestAruco, 'get_cloest_aruco')
         self.sub = self.node.create_subscription(
-            Marker, "cloest_aruco", self.cloest_aruco_callback, 10
+            Marker, "closest_aruco", self.closest_aruco_callback, 10
         )
         # aruco marker config
         config_file_path = (
@@ -50,8 +50,8 @@ class Mission:
     # ---------------------------------------------------------------------------- #
     #                                   callback                                   #
     # ---------------------------------------------------------------------------- #
-    def cloest_aruco_callback(self, msg):
-        self.cloest_aruco = Aruco(
+    def closest_aruco_callback(self, msg):
+        self.closest_aruco = Aruco(
             marker_id=msg.id, marker_config=self.markers_config[f"{msg.id}"]
         ).fromMsgMarker2Aruco(msg)
 
@@ -144,7 +144,7 @@ class Mission:
                 self.controller.setZeroVelocity()
                 return False
             # get downward aruco coordinate
-            closest_aruco = self.cloest_aruco
+            closest_aruco = self.closest_aruco
             if closest_aruco is None:
                 if rclpy.clock.Clock().now() - last_moveup_time > rclpy.time.Duration(
                     seconds=0.5

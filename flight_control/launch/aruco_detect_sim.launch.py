@@ -22,7 +22,7 @@ def generate_launch_description():
                 package="ros_gz_bridge",
                 executable="parameter_bridge",
                 output="screen",
-                arguments=[f"/drone_camera@sensor_msgs/msg/Image@gz.msgs.Image"],
+                arguments=[f"/camera/image_raw@sensor_msgs/msg/Image@gz.msgs.Image"],
             ),
             Node(
                 package="flight_control",

@@ -45,7 +45,7 @@ class ArucoDetector(Node):
         # cv2 setup
         self.cap = None
         if self.get_parameter("simulation").get_parameter_value().bool_value:
-            self.cap = VideoCaptureFromRos2("/drone_camera")
+            self.cap = VideoCaptureFromRos2("/camera/image_raw")
         else:
             self.get_logger().info("connecting to camera")
             self.cap = cv2.VideoCapture(0)
@@ -104,7 +104,7 @@ class ArucoDetector(Node):
             )
         # -------------------------------- publishers -------------------------------- #
         self.aruco_publisher = self.create_publisher(MarkerArray, "aruco_markers", 10)
-        self.cloest_aruco_publisher = self.create_publisher(Marker, "cloest_aruco", 10)
+        self.cloest_aruco_publisher = self.create_publisher(Marker, "closest_aruco", 10)
         # ------------------------------- start detect ------------------------------- #
         timer_period = 0.1  # seconds
         self.create_timer(timer_period, self.run)

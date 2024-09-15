@@ -27,10 +27,9 @@ class ArucoDetect(Node):
 
         self.declare_parameter(
             "debug",
-            False, 
+            False,
             ParameterDescriptor(
-                description="Enable debug mode",
-                type=ParameterType.PARAMETER_BOOL
+                description="Enable debug mode", type=ParameterType.PARAMETER_BOOL
             ),
         )
         self.debug = self.get_parameter("debug").get_parameter_value().bool_value
@@ -73,7 +72,9 @@ class ArucoDetect(Node):
             6: self.create_publisher(Marker, "/aruco/marker/id_6", 10),
         }
 
-        self.closest_marker_publisher = self.create_publisher(Marker, '/closest_marker', 10)
+        self.closest_marker_publisher = self.create_publisher(
+            Marker, "/closest_aruco", 10
+        )
 
         # 订阅图像话题
         self.subscription = self.create_subscription(
@@ -82,17 +83,21 @@ class ArucoDetect(Node):
 
         self.bridge = CvBridge()
 
-        # VGA 180fps
-        self.mtx = np.array(
-            [
-                [479.23864074, 0.0, 322.41904053],
-                [0.0, 478.87010769, 208.59056289],
-                [0.0, 0.0, 1.0],
-            ]
-        )
-        self.dist = np.array(
-            [[-0.04673894, 0.12198613, 0.00533764, 0.00095581, -0.15779023]]
-        )
+        # # VGA 180fps
+        # self.mtx = np.array(
+        #     [
+        #         [479.23864074, 0.0, 322.41904053],
+        #         [0.0, 478.87010769, 208.59056289],
+        #         [0.0, 0.0, 1.0],
+        #     ]
+        # )
+        # self.dist = np.array(
+        #     [[-0.04673894, 0.12198613, 0.00533764, 0.00095581, -0.15779023]]
+        # )
+
+        # simulation
+        self.mtx = np.array([[554.25625995, 0, 960], [0, 554.25625995, 540], [0.0, 0.0, 1]])
+        self.dist = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
 
     def draw_axis_and_id(self, frame, rvec, tvec, marker_length, marker_id):
         axis_length = marker_length * 0.8  # 坐標軸長度
@@ -155,7 +160,6 @@ class ArucoDetect(Node):
             cv2.LINE_AA,
         )
 
-
     def image_callback(self, msg):
         # 将ROS图像消息转换为OpenCV图像
         frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -164,7 +168,6 @@ class ArucoDetect(Node):
         # 检测Aruco标记
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
         corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict)
-        
 
         # 檢查是否有檢測到Aruco標記
         if ids is not None:
@@ -173,7 +176,9 @@ class ArucoDetect(Node):
             for i, marker_id in enumerate(ids.flatten()):
                 # 檢查是否是ID 0或6
                 if str(marker_id) in self.aruco_markers["aruco_markers"]:
-                    marker_length = self.aruco_markers["aruco_markers"][str(marker_id)]["marker_length"]
+                    marker_length = self.aruco_markers["aruco_markers"][str(marker_id)][
+                        "marker_length"
+                    ]
                     rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(
                         corners[i], marker_length, self.mtx, self.dist
                     )
@@ -189,21 +194,20 @@ class ArucoDetect(Node):
 
                 # else:
                 #     self.get_logger().info(f"Detected marker ID {marker_id}, but it's not 0 or 6")
-            
+
             if not found_valid_marker:
                 # 如果沒有找到有效的標記，發布空的Marker消息
                 self.closest_marker_publisher.publish(self.create_empty_marker())
                 self.get_logger().info(
-                    f"No valid Aruco markers in the image",
-                    throttle_duration_sec=0.5)
+                    f"No valid Aruco markers in the image", throttle_duration_sec=0.5
+                )
 
         else:
             # 如果沒有找到有效的標記，發布空的Marker消息
             self.closest_marker_publisher.publish(self.create_empty_marker())
             self.get_logger().info(
-                f"No valid Aruco markers in the image",
-                throttle_duration_sec=0.5)
-
+                f"No valid Aruco markers in the image", throttle_duration_sec=0.5
+            )
 
         # 根據參數是否顯示圖像
         if self.show_image:
@@ -211,7 +215,6 @@ class ArucoDetect(Node):
             cv2.circle(frame, (320, 240), 5, (255, 255, 255), -1)
             cv2.imshow("Aruco Detection", frame)
             cv2.waitKey(1)
-
 
     def rvec_to_euler_angles(self, rvec):
         R_mat, _ = cv2.Rodrigues(rvec[0])
@@ -256,8 +259,8 @@ class ArucoDetect(Node):
         empty_marker = Marker()
         empty_marker.header = Header()
         empty_marker.header.stamp = self.get_clock().now().to_msg()
-        empty_marker.header.frame_id = 'camera_frame'
-        empty_marker.id = 0  
+        empty_marker.header.frame_id = "camera_frame"
+        empty_marker.id = 0
         empty_marker.x = 0.0
         empty_marker.y = 0.0
         empty_marker.z = 0.0
@@ -266,6 +269,7 @@ class ArucoDetect(Node):
         empty_marker.yaw = 0.0
         empty_marker.confidence = 0.0
         return empty_marker
+
 
 def main(args=None):
     rclpy.init(args=args)
