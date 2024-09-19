@@ -2,6 +2,7 @@ import math
 import rclpy
 from rclpy.node import Node
 from flight_control_py.tool.PID import PID
+from flight_control_py.tool.get_yaml_config import get_yaml_config
 from flight_control_py.flight.base_control import BaseControl as FlightControl
 from flight_control_py.flight.flight_controller_info import FlightInfo
 from flight_control_py.aruco_visual.aruco import Aruco
@@ -9,6 +10,7 @@ from flight_control.srv import GetCloestAruco
 from aruco_msgs.msg import Marker
 import time
 import yaml
+from std_msgs.msg import Int32MultiArray, Float32
 
 
 class Mission:
@@ -31,21 +33,24 @@ class Mission:
         self.controller = controller
         self.flight_info = flight_info
         self.node = node
+        # ----------------------------- subscription_data ---------------------------- #
         self.closest_aruco = None
-        # self.getCloestArucoClient = self.node.create_client(GetCloestAruco, 'get_cloest_aruco')
+        self.hot_spot_temperature = None
+        self.hot_spot_pose = None  # temperature position [x, y]
+        # ------------------------------- subscription ------------------------------- #
         self.sub = self.node.create_subscription(
             Marker, "closest_aruco", self.closest_aruco_callback, 10
         )
-        # aruco marker config
-        config_file_path = (
-            self.node.get_parameter("config_file").get_parameter_value().string_value
+        self.sub = self.node.create_subscription(
+            Int32MultiArray, "hot_spot_temperature_pos", self.hot_spot_pose_callback, 10
         )
-        if config_file_path == "":
-            self.node.get_logger().error("Please set config_file parameter")
-            raise Exception("Configuration file not set")
-        with open(config_file_path, "r") as f:
-            config = yaml.safe_load(f)
-            self.markers_config = config["aruco_markers"]
+        self.sub = self.node.create_subscription(
+            Float32, "hot_spot_temperature", self.hot_spot_temperature_callback, 10
+        )
+
+        # ---------------------------- aruco marker config --------------------------- #
+        self.markers_config = get_yaml_config("aruco_detect", "aruco_markers.yaml")["aruco_markers"]
+        
 
     # ---------------------------------------------------------------------------- #
     #                                   callback                                   #
@@ -54,6 +59,12 @@ class Mission:
         self.closest_aruco = Aruco(
             marker_id=msg.id, marker_config=self.markers_config[f"{msg.id}"]
         ).fromMsgMarker2Aruco(msg)
+
+    def hot_spot_pose_callback(self, msg):
+        self.hot_spot_pose = msg.data
+
+    def hot_spot_temperature_callback(self, msg):
+        self.hot_spot_temperature = msg.data
 
     # ---------------------------------------------------------------------------- #
     #                                   Function                                   #

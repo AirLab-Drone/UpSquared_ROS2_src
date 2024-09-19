@@ -53,7 +53,8 @@ find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(OpenCV REQUIRED)
-
+find_package(ament_index_cpp REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 
 
@@ -109,13 +110,21 @@ ament_target_dependencies(COIN417RG2_ros2_node
     image_transport 
     OpenCV)
 
-
+#/* ----------------------- thermal fram to drone frame ---------------------- */
+add_executable(thermal_frame_to_drone_frame src/thermal_frame_to_drone_frame.cpp)
+ament_target_dependencies(thermal_frame_to_drone_frame 
+    rclcpp 
+    std_msgs 
+    sensor_msgs 
+    yaml-cpp
+)
 
 
 
 install(TARGETS
   test_node
   COIN417RG2_ros2_node
+  thermal_frame_to_drone_frame
   DESTINATION lib/${PROJECT_NAME}
 )
 
