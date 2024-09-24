@@ -11,6 +11,7 @@ from aruco_msgs.msg import Marker
 import time
 import yaml
 from std_msgs.msg import Int32MultiArray, Float32
+from thermal_msgs.msg import ThermalAlert
 
 
 class Mission:
@@ -24,6 +25,7 @@ class Mission:
     LANDING_MODE = 1
     LANDING_ON_PLATFORM_MODE = 2
     NAVIGATION_MODE = 3
+    FIRE_DISTINGUISH_MODE = 4
 
     mode = WAIT_MODE
 
@@ -35,22 +37,19 @@ class Mission:
         self.node = node
         # ----------------------------- subscription_data ---------------------------- #
         self.closest_aruco = None
-        self.hot_spot_temperature = None
-        self.hot_spot_pose = None  # temperature position [x, y]
+        self.hot_spot = ThermalAlert()  # 小熱像儀的熱點
         # ------------------------------- subscription ------------------------------- #
         self.sub = self.node.create_subscription(
             Marker, "closest_aruco", self.closest_aruco_callback, 10
         )
         self.sub = self.node.create_subscription(
-            Int32MultiArray, "hot_spot_temperature_pos", self.hot_spot_pose_callback, 10
-        )
-        self.sub = self.node.create_subscription(
-            Float32, "hot_spot_temperature", self.hot_spot_temperature_callback, 10
+            ThermalAlert, "hot_spot_pos", self.hot_spot_callback, 10
         )
 
         # ---------------------------- aruco marker config --------------------------- #
-        self.markers_config = get_yaml_config("aruco_detect", "aruco_markers.yaml")["aruco_markers"]
-        
+        self.markers_config = get_yaml_config("aruco_detect", "aruco_markers.yaml")[
+            "aruco_markers"
+        ]
 
     # ---------------------------------------------------------------------------- #
     #                                   callback                                   #
@@ -60,11 +59,8 @@ class Mission:
             marker_id=msg.id, marker_config=self.markers_config[f"{msg.id}"]
         ).fromMsgMarker2Aruco(msg)
 
-    def hot_spot_pose_callback(self, msg):
-        self.hot_spot_pose = msg.data
-
-    def hot_spot_temperature_callback(self, msg):
-        self.hot_spot_temperature = msg.data
+    def hot_spot_callback(self, msg):
+        self.hot_spot = msg.data
 
     # ---------------------------------------------------------------------------- #
     #                                   Function                                   #
@@ -337,3 +333,31 @@ class Mission:
         self.controller.setZeroVelocity()
         self.mode = self.WAIT_MODE
         return True
+
+    def fireDistinguish(self):
+        # 檢查先前模式是否為等待模式，定且設定目前模式為降落至平台模式
+        if self.mode != self.WAIT_MODE:
+            return False
+        self.__setMode(self.FIRE_DISTINGUISH_MODE)
+        # --------------------------------- variable --------------------------------- #
+        MAX_SPEED = 0.3  # 速度 單位:公尺/秒
+        MAX_YAW = 15 * 3.14 / 180  # 15度/s
+        # ----------------------------------- 飛往火源 ----------------------------------- #
+        while True:
+            if self.hot_spot.temperature < 60:
+                self.controller.setZeroVelocity()
+                continue
+            else:
+                different_move = math.sqrt(self.hot_spot.x**2 + self.hot_spot.y**2)
+                if different_move < 0.5:  # 離火原距離小於0.5m就停止，開始滅火
+                    self.controller.setZeroVelocity()
+                    break
+                # 限制最大速度
+                max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
+                move_x = move_x / different_move * max_speed_temp
+                move_y = move_y / different_move * max_speed_temp
+                self.controller.sendPositionTargetVelocity(
+                    self.hot_spot.x, self.hot_spot.y, 0, 0
+                )
+            # ----------------------------------- 開始滅火 ----------------------------------- #
+            # todo pin腳控制，噴灑滅火劑，噴灑兩秒後停止
