@@ -61,7 +61,7 @@ class ArucoDetector(Node):
             # self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0)  # 再關閉自動曝光
             self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0)  # 先開啟自動曝光
             self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0) # 再關閉自動曝光
-            self.cap.set(cv2.CAP_PROP_EXPOSURE, -10)
+            self.cap.set(cv2.CAP_PROP_EXPOSURE, 157)
             # TODO 降落時自動調整曝光值
 
             self.get_logger().info("connected to camera")
@@ -108,7 +108,7 @@ class ArucoDetector(Node):
         # ------------------------------- start detect ------------------------------- #
         timer_period = 0.1  # seconds
         self.create_timer(timer_period, self.run)
-        self.create_timer(timer_period, self.get_cloest_aruco_callback)
+        self.create_timer(timer_period, self.get_closest_aruco_callback)
 
     def run(self):
         if self.is_running:
@@ -185,7 +185,7 @@ class ArucoDetector(Node):
         #     self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0) # 先開啟自動曝光
         #     self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0) # 再關閉自動曝光
 
-    def get_cloest_aruco_callback(self):
+    def get_closest_aruco_callback(self):
 
         closest_aruco = None
         for aruco in self.arucoList:
