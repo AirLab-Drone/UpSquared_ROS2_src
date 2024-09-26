@@ -8,6 +8,7 @@ from flight_control_py.aruco_visual.aruco import Aruco
 from flight_control.srv import GetCloestAruco
 from aruco_msgs.msg import Marker
 import time
+import yaml
 
 
 class Mission:
@@ -19,7 +20,7 @@ class Mission:
     WAIT_MODE = -1
     TAKE_OFF_MODE = 0
     LANDING_MODE = 1
-    LANDIND_ON_PLATFORM_MODE = 2
+    LANDING_ON_PLATFORM_MODE = 2
     NAVIGATION_MODE = 3
 
     mode = WAIT_MODE
@@ -30,17 +31,29 @@ class Mission:
         self.controller = controller
         self.flight_info = flight_info
         self.node = node
-        self.cloest_aruco = None
+        self.closest_aruco = None
         # self.getCloestArucoClient = self.node.create_client(GetCloestAruco, 'get_cloest_aruco')
         self.sub = self.node.create_subscription(
-            Marker, "cloest_aruco", self.cloest_aruco_callback, 10
+            Marker, "closest_aruco", self.closest_aruco_callback, 10
         )
+        # aruco marker config
+        config_file_path = (
+            self.node.get_parameter("config_file").get_parameter_value().string_value
+        )
+        if config_file_path == "":
+            self.node.get_logger().error("Please set config_file parameter")
+            raise Exception("Configuration file not set")
+        with open(config_file_path, "r") as f:
+            config = yaml.safe_load(f)
+            self.markers_config = config["aruco_markers"]
 
     # ---------------------------------------------------------------------------- #
     #                                   callback                                   #
     # ---------------------------------------------------------------------------- #
-    def cloest_aruco_callback(self, msg):
-        self.cloest_aruco = Aruco(msg.id).fromMsgMarker2Aruco(msg)
+    def closest_aruco_callback(self, msg):
+        self.closest_aruco = Aruco(
+            marker_id=msg.id, marker_config=self.markers_config[f"{msg.id}"]
+        ).fromMsgMarker2Aruco(msg)
 
     # ---------------------------------------------------------------------------- #
     #                                   Function                                   #
@@ -50,7 +63,7 @@ class Mission:
             self.WAIT_MODE,
             self.TAKE_OFF_MODE,
             self.LANDING_MODE,
-            self.LANDIND_ON_PLATFORM_MODE,
+            self.LANDING_ON_PLATFORM_MODE,
             self.NAVIGATION_MODE,
         ]:
             return False
@@ -82,7 +95,8 @@ class Mission:
         while not self.controller.land():
             print("landing")
         while self.flight_info.state.armed:
-            print(f"landing high:{self.flight_info.rangefinder_alt}")
+            # print(f"landing high:{self.flight_info.rangefinder_alt}")
+            pass
         self.mode = self.WAIT_MODE
         return True
 
@@ -102,34 +116,52 @@ class Mission:
         # 檢查先前模式是否為等待模式，定且設定目前模式為降落至平台模式
         if self.mode != self.WAIT_MODE:
             return False
-        self.__setMode(self.LANDIND_ON_PLATFORM_MODE)
+        self.__setMode(self.LANDING_ON_PLATFORM_MODE)
         # --------------------------------- variable --------------------------------- #
-        LOWEST_HEIGHT = 0.7  # 最低可看到aruco的高度 單位:公尺
+        LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
-        MAX_YAW = 15 * 3.14 / 180  # 15度
-        DOWNWARD_SPEED = -0.2  # the distance to move down
+        MAX_DOWN_SPEED = 0.15  # 速度 單位:公尺/秒
+        MAX_YAW = 15 * 3.14 / 180  # 15度/s
+        DOWNWARD_SPEED = -0.2  # the distance to move down,必需要為負
         last_moveup_time = rclpy.clock.Clock().now()
+        last_not_in_range_time = rclpy.clock.Clock().now()
+
+        # -------------------------------- PID initial ------------------------------- #
+        def init_pid():
+            current_time = rclpy.clock.Clock().now().nanoseconds
+            pid_move_x = PID(0.6, 0.0006, 0.00083, current_time)
+            pid_move_y = PID(0.6, 0.0006, 0.00083, current_time)
+            pid_move_z = PID(0.4, 0.0006, 0.00083, current_time, LOWEST_HEIGHT)
+            pid_move_yaw = PID(0.6, 0.0006, 0.00083, current_time)
+            return pid_move_x, pid_move_y, pid_move_yaw, pid_move_z
+
+        pid_move_x, pid_move_y, pid_move_yaw, pid_move_z = init_pid()
         # ------------------------------- start mission ------------------------------ #
         while True:
             # 設定中斷點，如果不是降落模式就直接結束
-            if self.mode != self.LANDIND_ON_PLATFORM_MODE:
+            # todo 檢查thread結束後是否會釋放記憶體
+            if self.mode != self.LANDING_ON_PLATFORM_MODE:
                 self.controller.setZeroVelocity()
                 return False
             # get downward aruco coordinate
-            closest_aruco = self.cloest_aruco
+            closest_aruco = self.closest_aruco
             if closest_aruco is None:
                 if rclpy.clock.Clock().now() - last_moveup_time > rclpy.time.Duration(
                     seconds=0.5
                 ):
                     if self.flight_info.rangefinder_alt < 3:
+                        # todo 若看不到aruco水平飛到UWB home position
                         # print('move up')
-                        self.controller.sendPositionTargetVelocity(0, 0, 0.2, 0)
+                        self.controller.sendPositionTargetVelocity(
+                            0, 0, -DOWNWARD_SPEED, 0
+                        )
                         last_moveup_time = rclpy.clock.Clock().now()
-                # self.controller.setZeroVelocity()
+                        pid_move_x, pid_move_y, pid_move_yaw, pid_move_z = init_pid()
                 continue
             marker_x, marker_y, marker_z, marker_yaw, _, _ = (
-                closest_aruco.getCoordinate()
+                closest_aruco.get_coordinate_with_offset()
             )
+            # 處理
             if (
                 marker_x is None
                 or marker_y is None
@@ -139,61 +171,74 @@ class Mission:
                 if rclpy.clock.Clock().now() - last_moveup_time > rclpy.time.Duration(
                     seconds=0.5
                 ):
+                    # todo 若看不到aruco水平飛到UWB home position
                     if self.flight_info.rangefinder_alt < 3:
-                        # print('move up')
-                        self.controller.sendPositionTargetVelocity(0, 0, 0.2, 0)
+                        # print('mo = pid_move_y.PID(-marker_x, current_time)ve up')
+                        self.controller.sendPositionTargetVelocity(
+                            0, 0, -DOWNWARD_SPEED, 0
+                        )
                         last_moveup_time = rclpy.clock.Clock().now()
-                # self.controller.setZeroVelocity()
+                        pid_move_x, pid_move_y, pid_move_yaw, pid_move_z = init_pid()
                 continue
-            last_moveup_time = rclpy.clock.Clock().now()
-            # PID control
-            diffrent_distance = math.sqrt(marker_x**2 + marker_y**2)
-            # imit move_x and move_y and move_yaw #
-            move_x = min(max(-marker_y, -MAX_SPEED), MAX_SPEED)
-            move_y = min(max(-marker_x, -MAX_SPEED), MAX_SPEED)
-            if (360 - marker_yaw) < marker_yaw:
-                marker_yaw = -marker_yaw
-            move_yaw = min(max(-marker_yaw * 3.14 / 180, -MAX_YAW), MAX_YAW)
-            # send velocity command#
-            if (
-                diffrent_distance < 0.03
-                and self.flight_info.rangefinder_alt <= LOWEST_HEIGHT
-                and (0 < marker_yaw < 5 or 355 < marker_yaw < 360)
-            ):
-                self.controller.setZeroVelocity()
-                print(f"landing high:{self.flight_info.rangefinder_alt}")
-                print(
-                    f"x:{marker_x}, y:{marker_y}, z:{marker_z}, yaw:{marker_yaw}, high:{self.flight_info.rangefinder_alt}"
-                )
-                break
-            self.controller.sendPositionTargetPosition(0, 0, 0, yaw=move_yaw)
-            if self.flight_info.rangefinder_alt > LOWEST_HEIGHT:
-                self.controller.sendPositionTargetVelocity(
-                    move_x,
-                    move_y,
-                    DOWNWARD_SPEED,
-                    0,
-                )
+            # 無人機和降落點的水平誤差
+            different_distance = math.sqrt(marker_x**2 + marker_y**2)
+            # limit move_x and move_y and move_yaw #
+            # todo改成以無人機為準的座標系
+            # todo加入PID控制
+            # -------------------------------- PID control ------------------------------- #
+            current_time = rclpy.clock.Clock().now().nanoseconds
+            move_x = pid_move_x.update(marker_y, current_time)
+            move_y = pid_move_y.update(marker_x, current_time)
+            move_z = pid_move_z.update(marker_z, current_time)
+            marker_yaw = (marker_yaw + 180) % 360 - 180  # 轉換成-180~180
+            move_yaw = pid_move_yaw.update(marker_yaw * 3.14 / 180, current_time)
+            # ---------------------------------- 限制最大速度 ---------------------------------- #
+            different_move = math.sqrt(move_x**2 + move_y**2)
+            if -30 < marker_yaw < 30:
+                max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
+                move_x = move_x / different_move * max_speed_temp
+                move_y = move_y / different_move * max_speed_temp
+                move_z = min(max(move_z, -MAX_DOWN_SPEED), MAX_DOWN_SPEED)
             else:
-                # when height is lower than lowest_high, stop moving down
-                self.controller.sendPositionTargetVelocity(
-                    move_x,
-                    move_y,
-                    0,
-                    0,
-                )
+                # when the yaw is over 90 degree, the drone will not move
+                move_x = 0
+                move_y = 0
+                move_z = 0
+            move_yaw = min(max(move_yaw, -MAX_YAW), MAX_YAW)
+            last_moveup_time = rclpy.clock.Clock().now()
+
+            print("===========================================================")
             print(
-                f"move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{diffrent_distance:.2f}"
+                f"move_x:   {move_x:.2f}, move_y:   {move_y:.2f}, move_z:   {move_z:.2f}, move_yaw:   {move_yaw:.2f}"
             )
-            self.node.get_logger().debug(
-                f"[Mission.landedOnPlatform] move_x:{move_x:.2f}, move_y:{move_y:.2f}, move_yaw:{move_yaw:.2f}, different_distance:{diffrent_distance:.2f}"
+            print(
+                f"id: {closest_aruco.id}, marker_x: {marker_x:.2f}, marker_y: {marker_y:.2f}, marker_z: {marker_z:.2f}, marker_yaw: {marker_yaw:.2f}"
             )
+            # ------------------ check distance and yaw, whether landing ----------------- #
+            if (
+                different_distance < 0.1
+                and marker_z <= LOWEST_HEIGHT * 1.2
+                and (-5 <= marker_yaw <= 5)
+            ):
+                if (
+                    rclpy.clock.Clock().now() - last_not_in_range_time
+                    > rclpy.time.Duration(seconds=1)
+                ):
+                    self.controller.setZeroVelocity()
+                    print(f"landing high:{marker_z}")
+                    break
+                print(
+                    f"during last not in range time: {rclpy.clock.Clock().now() - last_not_in_range_time}"
+                )
+                pass
+            else:
+                last_not_in_range_time = rclpy.clock.Clock().now()
+            # --------------------------- send velocity command -------------------------- #
+            self.controller.sendPositionTargetVelocity(move_x, move_y, move_z, move_yaw)
         self.controller.setZeroVelocity()
         print("now I want to land=================================")
         while not self.controller.land():
             print("landing")
-        while self.flight_info.rangefinder_alt > 0.1:
-            print(f"landing high:{self.flight_info.rangefinder_alt}")
         self.mode = self.WAIT_MODE
         return True
 
@@ -201,7 +246,7 @@ class Mission:
         self,
         destination_x: float,
         destination_y: float,
-        destination_z: float,
+        destination_z: float = 2,
     ):
         """
         Function to navigate the drone to a specified location.
@@ -215,7 +260,7 @@ class Mission:
             destination_z (float): The rangefinder altitude of the location.
 
         Returns:
-            None
+            bool: True if the drone reaches the location, False otherwise.
         """
         # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
         if self.mode != self.WAIT_MODE:
@@ -223,11 +268,11 @@ class Mission:
         self.__setMode(self.NAVIGATION_MODE)
         # --------------------------------- variable --------------------------------- #
         MAX_SPEED = 0.3
-        MAX_YAW = 15 * 3.14 / 180
+        MAX_YAW = 30 * 3.14 / 180
         bcn_orient_yaw = (
             self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
         )
-    
+
         # --------------------------------- function --------------------------------- #
         # 如果距離範圍在threshold內就回傳True
         def around(a, b, threshold=0.2):
@@ -273,7 +318,9 @@ class Mission:
                 f"[Mission.navigateTo] rotate_deg: {rotate_deg}, move_forward: {move_forward}, move_yaw: {move_yaw}"
             )
             if abs(rotate_deg) < MAX_YAW:
-                self.controller.sendPositionTargetVelocity(move_forward, 0, move_z, move_yaw)
+                self.controller.sendPositionTargetVelocity(
+                    move_forward, 0, move_z, move_yaw
+                )
             else:
                 self.controller.sendPositionTargetVelocity(0, 0, move_z, move_yaw)
         self.controller.setZeroVelocity()

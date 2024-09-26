@@ -51,6 +51,12 @@ class FlightInfo:
             rclpy.qos.qos_profile_sensor_data,
         )
         self.node.create_subscription(
+            Float64,
+            "/mavros/global_position/rel_alt",
+            self.compassCallback,
+            rclpy.qos.qos_profile_sensor_data,
+        )
+        self.node.create_subscription(
             State,
             "/mavros/state",
             self.stateCallback,
@@ -98,6 +104,13 @@ class FlightInfo:
         """
         self.compass_heading = msg.data
         self.node.get_logger().debug(f"compass heading: {self.compass_heading}")
+
+    def relAltCallback(self, msg):
+        """
+        Callback function for the relative alt subscription
+        """
+        self.rel_alt = msg.data
+        self.node.get_logger().debug(f"relative alt: {self.rel_alt}")
 
     def stateCallback(self, msg):
         """

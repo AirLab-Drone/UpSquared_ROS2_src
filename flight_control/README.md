@@ -3,6 +3,9 @@ opencv-python
 opencv-contrib-python  
 scipy  
 cv_bridge  
+```
+pip install opencv-python opencv-contrib-python scipy cv_bridge
+```
 mavros  
 ```
 sudo apt install ros-humble-mavros ros-humble-mavros-extras
@@ -11,17 +14,20 @@ chmod a+x install_geographiclib_datasets.sh
 ./install_geographiclib_datasets.sh
 ```
 
-# 座標係
+# 座標係(俯視圖)
 ## 飛控座標
 x 軸: 前進為正，後退為負  
 y 軸: 左移為正，右移為負  
 z 軸: 上升為正，下降為負  
+yaw: 順時針為正，逆時針為負
 
 ## marker 相機
-marker相對於相機的座標  
+以相機為原點
 x 軸: 向右為正，向左為負  
 y 軸: 向後為正，向前為負  
-z 軸: 向上為正，向下為負  
+z 軸: 遠離為正，靠近為負  
+yaw: 順時針為正，逆時針為負
+![相機座標](readme_src/cstutorial.jpg)
 
 # 飛行準備
 1. 設定接口權限

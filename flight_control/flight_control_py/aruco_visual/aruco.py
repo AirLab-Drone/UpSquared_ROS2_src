@@ -31,44 +31,49 @@ class LimitedList:
 
 
 class Aruco:
+    # wxsj-AHD-1080p
+    # mtx = np.array(
+    #     [
+    #         [413.48355918, 0, 314.89857666],
+    #         [0, 414.51193613, 250.2192352],
+    #         [0, 0, 1],
+    #     ]
+    # )
+    # dist = np.array([[0.18866341, -0.22605576, 0.00306978, 0.00236462, 0.08722311]])
+
+    # VGA 180fps
     mtx = np.array(
-        # [[776.31000562, 0, 327.96638128], [0, 775.07173891, 179.57551958], [0, 0, 1]]
-        # [
-        #     [405.19622214, 0.00000000e00, 340],
-        #     [0.00000000e00, 405.19622214, 240],
-        #     [0.00000000e00, 0.00000000e00, 1.00000000e00],
-        # ]
         [
-            [340.74031116, 0.0, 283.37463566],
-            [0.0, 340.06602771, 228.07711583],
+            [479.23864074, 0.0, 322.41904053],
+            [0.0, 478.87010769, 208.59056289],
             [0.0, 0.0, 1.0],
         ]
     )
-    dist = np.array(
-        # [
-        #     [
-        #         8.29378271e-02,
-        #         1.26989092e-01,
-        #         3.86532147e-03,
-        #         1.18462078e-03,
-        #         -1.87627090e00,
-        #     ]
-        # ]
-        # [[0, 0, 0, 0, 0]]
-        [[0.13218569, -0.30664348, 0.00281174, -0.02061007, 0.11064283]]
-    )
-    markerLength = 0.16  # unit: meter
+    dist = np.array([[-0.04673894, 0.12198613, 0.00533764, 0.00095581, -0.15779023]])
+
+    # # simulation
+    # mtx = np.array([[554.25625995,   0, 960],
+    #    [  0, 554.25625995, 540],
+    #    [  0,   0,   1]])
+    # dist = np.array([[0, 0, 0, 0, 0]])
+
     limit_list_size = 3
 
-    # markerLength = 0.0385
-    def __init__(self, id) -> None:
-        self.id = id
+    def __init__(self, marker_id, marker_config) -> None:
+        self.id = marker_id
+        self.markerLength = marker_config["marker_length"]  # unit: meter
+        self.offset_x = marker_config["offset_x"]
+        self.offset_y = marker_config["offset_y"]
+        self.offset_z = marker_config["offset_z"]
+        self.marker_yaw = marker_config["marker_yaw"]
         self.x_list = LimitedList(self.limit_list_size)
         self.y_list = LimitedList(self.limit_list_size)
         self.z_list = LimitedList(self.limit_list_size)
         self.yaw_list = LimitedList(self.limit_list_size)
         self.pitch_list = LimitedList(self.limit_list_size)
         self.roll_list = LimitedList(self.limit_list_size)
+        self.rvec = None
+        self.tvec = None
 
     def checkInList(self, ids):
         if ids is None or self.id not in ids:
@@ -83,7 +88,7 @@ class Aruco:
             return True
 
     def estimatePoseSingleMarkers(self, corner):
-        rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(
+        rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(
             corner, self.markerLength, self.mtx, self.dist
         )
         self.rvec = rvec
@@ -94,8 +99,8 @@ class Aruco:
         z = tvec[0][0][2]
         return x, y, z, yaw, pitch, roll
 
-    def update(self, id, corner):
-        if self.id != id:
+    def update(self, marker_id, corner):
+        if self.id != marker_id:
             return
         x, y, z, yaw, pitch, roll = self.estimatePoseSingleMarkers(corner)
         self.x_list.add_element(x)
@@ -118,6 +123,25 @@ class Aruco:
         yaw = self.yaw_list.calculate_median()
         pitch = self.pitch_list.calculate_median()
         roll = self.roll_list.calculate_median()
+
+        return x, y, z, yaw, pitch, roll
+
+    def get_coordinate_with_offset(self):
+        x, y, z, yaw, pitch, roll = self.getCoordinate()
+        if (
+            x == None
+            or y == None
+            or z == None
+            or yaw == None
+            or pitch == None
+            or roll == None
+        ):
+            return None, None, None, None, None, None
+        # ---------------------------------- offset ---------------------------------- #
+        x -= self.offset_x
+        y -= self.offset_y
+        z -= self.offset_z
+        yaw -= self.marker_yaw
         return x, y, z, yaw, pitch, roll
 
     def getCoordinateWithMarkerMsg(self):
@@ -178,31 +202,31 @@ class Aruco:
     def is_empty(self):
         return len(self.x_list.items) == 0
 
-    def euler_to_quaternion(self, roll, pitch, yaw):
-        # 將Euler角轉換為旋轉矩陣
-        rotation_matrix = Rotation.from_euler("xyz", [roll, pitch, yaw]).as_matrix()
+    # def euler_to_quaternion(self, roll, pitch, yaw):
+    #     # 將Euler角轉換為旋轉矩陣
+    #     rotation_matrix = Rotation.from_euler("xyz", [roll, pitch, yaw]).as_matrix()
 
-        # 將旋轉矩陣轉換為四元數
-        quaternion = Rotation.from_matrix(rotation_matrix).as_quat()
+    #     # 將旋轉矩陣轉換為四元數
+    #     quaternion = Rotation.from_matrix(rotation_matrix).as_quat()
 
-        return quaternion
+    #     return quaternion
 
-    def quaternion_to_euler(self, quaternion):
-        x = quaternion.x
-        y = quaternion.y
-        z = quaternion.z
-        w = quaternion.w
-        t0 = +2.0 * (w * x + y * z)
-        t1 = +1.0 - 2.0 * (x * x + y * y)
-        X = math.atan2(t0, t1)
-        t2 = +2.0 * (w * y - z * x)
-        t2 = +1.0 if t2 > +1.0 else t2
-        t2 = -1.0 if t2 < -1.0 else t2
-        Y = math.asin(t2)
-        t3 = +2.0 * (w * z + x * y)
-        t4 = +1.0 - 2.0 * (y * y + z * z)
-        Z = math.atan2(t3, t4)
-        return X, Y, Z
+    # def quaternion_to_euler(self, quaternion):
+    #     x = quaternion.x
+    #     y = quaternion.y
+    #     z = quaternion.z
+    #     w = quaternion.w
+    #     t0 = +2.0 * (w * x + y * z)
+    #     t1 = +1.0 - 2.0 * (x * x + y * y)
+    #     X = math.atan2(t0, t1)
+    #     t2 = +2.0 * (w * y - z * x)
+    #     t2 = +1.0 if t2 > +1.0 else t2
+    #     t2 = -1.0 if t2 < -1.0 else t2
+    #     Y = math.asin(t2)
+    #     t3 = +2.0 * (w * z + x * y)
+    #     t4 = +1.0 - 2.0 * (y * y + z * z)
+    #     Z = math.atan2(t3, t4)
+    #     return X, Y, Z
 
     def fromMsgMarker2Aruco(self, marker: Marker):
         """
