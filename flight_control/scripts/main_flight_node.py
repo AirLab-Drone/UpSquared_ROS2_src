@@ -31,12 +31,12 @@ class MainFlightNode(Node):
         self.flight_info = FlightInfo(self)
         self.mission = Mission(self.controller, self.flight_info, self)
         # 接收火源警報
-        self.create_subscription(
-            ThermalAlert,
-            "/thermal_alert",
-            self.thermalAlertCallback,
-            rclpy.qos.qos_profile_sensor_data,
-        )
+        # self.create_subscription(
+        #     ThermalAlert,
+        #     "/thermal_alert",
+        #     self.thermalAlertCallback,
+        #     rclpy.qos.qos_profile_sensor_data,
+        # )
 
         # --------------------------------- 控制飛行流程偵測器 -------------------------------- #
         self.flow_thread = threading.Thread()  # 建立空執行緒
@@ -100,10 +100,10 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        if not self.mission.simpleTakeoff():
-            self.get_logger().info("takeoff fail")
-            self.flow_mode = self.STOP_FLOW
-            return
+        # if not self.mission.simpleTakeoff(target_hight=1):
+        #     self.get_logger().info("takeoff fail")
+        #     self.flow_mode = self.STOP_FLOW
+        #     return
         self.get_logger().info("land to platform")
         self.controller.setMode()
         time.sleep(4)

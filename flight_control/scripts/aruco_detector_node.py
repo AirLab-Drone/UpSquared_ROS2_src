@@ -50,17 +50,9 @@ class ArucoDetector(Node):
             self.get_logger().info("connecting to camera")
             self.cap = cv2.VideoCapture(0)
             # -------------------------------- 設定以MJPG格式讀取 ------------------------------- #
-            self.cap.set(
-                cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc("m", "j", "p", "g")
-            )
-            self.cap.set(
-                cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc("M", "J", "P", "G")
-            )
-
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
             # ----------------------------------- 消除頻閃 ----------------------------------- #
-            # self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0)  # 再關閉自動曝光
-            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0)  # 先開啟自動曝光
-            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0) # 再關閉自動曝光
+            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1.0) # 關閉自動曝光
             self.cap.set(cv2.CAP_PROP_EXPOSURE, 157)
             # TODO 降落時自動調整曝光值
 
