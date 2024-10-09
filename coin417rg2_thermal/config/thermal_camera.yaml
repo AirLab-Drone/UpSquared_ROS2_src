@@ -10,6 +10,6 @@ thermal_camera_pose:
 # 熱像儀的視角
 # unit is degree
 thermal_camera_params:
-  fov: 60
-  width: 640  
-  height: 480
+  fov: 60.0
+  width: 640.0  
+  height: 480.0

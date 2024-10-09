@@ -55,10 +55,7 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "srv/GetCloestAruco.srv" #! 刪掉不會用到的services
-  DEPENDENCIES aruco_msgs
- )
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

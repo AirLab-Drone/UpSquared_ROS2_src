@@ -34,7 +34,8 @@ extern "C"
 #include <std_msgs/msg/string.hpp>
 #include "cv_bridge/cv_bridge.h"
 #include <image_transport/image_transport.hpp>
-#include "thermal_msgs/msg/ThermalAlert.hpp"
+#include <thermal_msgs/msg/thermal_alert.hpp>
+
 
 
 
@@ -196,14 +197,14 @@ private:
             auto pixel_msg = std::make_unique<std_msgs::msg::Int32MultiArray>();
             pixel_msg->data = {x_pixel_, y_pixel_};
             pixel_pub_->publish(std::move(pixel_msg));
-            RCLCPP_INFO(this->get_logger(), "Published pixel values: [%d, %d]", x_pixel_, y_pixel_);
+            // RCLCPP_INFO(this->get_logger(), "Published pixel values: [%d, %d]", x_pixel_, y_pixel_);
 
 
             // Publish temperature
             auto temperature_msg = std::make_unique<std_msgs::msg::Float32>();
             temperature_msg->data = max_temperature_;
             temperature_pub_->publish(std::move(temperature_msg));
-            RCLCPP_INFO(this->get_logger(), "Published max temperature: %f", max_temperature_);
+            // RCLCPP_INFO(this->get_logger(), "Published max temperature: %f", max_temperature_);
             
             // Publish hot spot
             auto hot_spot_msg = std::make_unique<thermal_msgs::msg::ThermalAlert>();
@@ -211,7 +212,7 @@ private:
             hot_spot_msg->y = y_pixel_;
             hot_spot_msg->temperature = max_temperature_;
             hot_spot_pub_->publish(std::move(hot_spot_msg));
-            RCLCPP_INFO(this->get_logger(), "Published hot spot: [%d, %d, %f]", x_pixel_, y_pixel_, max_temperature_);
+            // RCLCPP_INFO(this->get_logger(), "Published hot spot: [%d, %d, %f]", x_pixel_, y_pixel_, max_temperature_);
 
             if (frameData.frame_yuv_data != NULL){
                 cv::Mat YUV_Image = convertYUV422ToBGR(frameData.frame_yuv_data);
