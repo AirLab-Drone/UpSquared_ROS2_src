@@ -38,6 +38,7 @@ class Mission:
         # ----------------------------- subscription_data ---------------------------- #
         self.closest_aruco = None
         self.hot_spot = ThermalAlert()  # 小熱像儀的熱點
+        self.last_hot_spot_update_time = rclpy.clock.Clock().now()
         # ------------------------------- subscription ------------------------------- #
         self.sub = self.node.create_subscription(
             Marker, "closest_aruco", self.closest_aruco_callback, 10
@@ -60,6 +61,7 @@ class Mission:
         ).fromMsgMarker2Aruco(msg)
 
     def hot_spot_callback(self, msg):
+        self.last_hot_spot_update_time = rclpy.clock.Clock().now()
         self.hot_spot = msg.data
 
     # ---------------------------------------------------------------------------- #
@@ -246,6 +248,7 @@ class Mission:
         print("now I want to land=================================")
         while not self.controller.land():
             print("landing")
+        # ----------------------------------- 結束任務 ----------------------------------- #
         self.mode = self.WAIT_MODE
         return True
 
@@ -330,6 +333,7 @@ class Mission:
                 )
             else:
                 self.controller.sendPositionTargetVelocity(0, 0, move_z, move_yaw)
+        # ----------------------------------- 結束任務 ----------------------------------- #
         self.controller.setZeroVelocity()
         self.mode = self.WAIT_MODE
         return True
@@ -342,22 +346,35 @@ class Mission:
         # --------------------------------- variable --------------------------------- #
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
         MAX_YAW = 15 * 3.14 / 180  # 15度/s
-        # ----------------------------------- 飛往火源 ----------------------------------- #
+        # ----------------------------------- 滅火任務 ----------------------------------- #
         while True:
+            # 如果溫度低於60度就停止
             if self.hot_spot.temperature < 60:
                 self.controller.setZeroVelocity()
                 continue
-            else:
-                different_move = math.sqrt(self.hot_spot.x**2 + self.hot_spot.y**2)
-                if different_move < 0.5:  # 離火原距離小於0.5m就停止，開始滅火
-                    self.controller.setZeroVelocity()
-                    break
-                # 限制最大速度
-                max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
-                move_x = move_x / different_move * max_speed_temp
-                move_y = move_y / different_move * max_speed_temp
-                self.controller.sendPositionTargetVelocity(
-                    self.hot_spot.x, self.hot_spot.y, 0, 0
-                )
-            # ----------------------------------- 開始滅火 ----------------------------------- #
-            # todo pin腳控制，噴灑滅火劑，噴灑兩秒後停止
+            # 更新時間超過1秒就停止
+            during_time = rclpy.clock.Clock().now() - self.last_hot_spot_update_time
+            if during_time > rclpy.time.Duration(seconds=1):
+                self.controller.setZeroVelocity()
+                continue
+            # 如果座標都是零就停止
+            if self.hot_spot.x == 0 and self.hot_spot.y == 0:
+                self.controller.setZeroVelocity()
+                continue
+            # ----------------------------------- 飛往火源 ----------------------------------- #
+            different_move = math.sqrt(self.hot_spot.x**2 + self.hot_spot.y**2)
+            if different_move < 0.5:  # 離火原距離小於0.5m就停止，開始滅火
+                self.controller.setZeroVelocity()
+                break
+            # 限制最大速度
+            max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
+            move_x = move_x / different_move * max_speed_temp
+            move_y = move_y / different_move * max_speed_temp
+            self.controller.sendPositionTargetVelocity(
+                self.hot_spot.x, self.hot_spot.y, 0, 0
+            )
+        # ----------------------------------- 開始滅火 ----------------------------------- #
+        # todo pin腳控制，噴灑滅火劑，噴灑兩秒後停止
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.controller.setZeroVelocity()
+        self.mode = self.WAIT_MODE
