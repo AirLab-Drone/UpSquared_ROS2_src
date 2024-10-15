@@ -74,10 +74,9 @@ private:
     {
         YAML::Node config = get_yaml_config("coin417rg2_thermal", "thermal_camera.yaml");
 
-        // float fov = config["thermal_camera_params"]["fov"].as<float>();
-        // float image_width = config["thermal_camera_params"]["image_width"].as<float>();
-        // return 2 * rangefinder_alt * tan(fov / 2) / image_width;
-        return 0.01;
+        float fov = config["thermal_camera_params"]["fov"].as<float>();
+        float image_width = config["thermal_camera_params"]["width"].as<float>();
+        return 2 * rangefinder_alt * tan(fov / 2) / image_width;
     }
 };
 

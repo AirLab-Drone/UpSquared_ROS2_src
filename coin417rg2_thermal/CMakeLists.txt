@@ -131,7 +131,10 @@ target_link_libraries(thermal_frame_to_drone_frame
 ament_python_install_package(${PROJECT_NAME}_py)
 # Install Python executables
 file(GLOB SCRIPTS "scripts/*.py")
-
+install(PROGRAMS
+  ${SCRIPTS}
+  DESTINATION lib/${PROJECT_NAME}
+)
 install(TARGETS
   test_node
   COIN417RG2_ros2_node

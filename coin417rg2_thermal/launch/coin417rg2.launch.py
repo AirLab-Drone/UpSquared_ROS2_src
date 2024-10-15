@@ -37,7 +37,7 @@ def generate_launch_description():
             ),
             Node(
                 package="coin417rg2_thermal",
-                executable="thermal_frame_to_drone_frame",
+                executable="thermal_frame_to_drone_frame.py",
                 name="thermal_frame_to_drone_frame",
             ),
         ]
