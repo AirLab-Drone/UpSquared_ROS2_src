@@ -12,6 +12,7 @@ import time
 import yaml
 from std_msgs.msg import Int32MultiArray, Float32
 from thermal_msgs.msg import ThermalAlert
+from payload.srv import Spry
 
 
 class Mission:
@@ -46,7 +47,10 @@ class Mission:
         self.sub = self.node.create_subscription(
             ThermalAlert, "hot_spot_pos", self.hot_spot_callback, 10
         )
-
+        # ------------------------------ service client ------------------------------ #
+        self.fire_extinguisher_spry_client = self.node.create_client(Spry, "spry")
+        while not self.fire_extinguisher_spry_client.wait_for_service(timeout_sec=1.0):
+            self.node.get_logger().info("service not available, waiting again...")
         # ---------------------------- aruco marker config --------------------------- #
         self.markers_config = get_yaml_config("aruco_detect", "aruco_markers.yaml")[
             "aruco_markers"
@@ -373,8 +377,10 @@ class Mission:
             self.controller.sendPositionTargetVelocity(
                 self.hot_spot.x, self.hot_spot.y, 0, 0
             )
-        # ----------------------------------- 開始滅火 ----------------------------------- #
-        # todo pin腳控制，噴灑滅火劑，噴灑兩秒後停止
+        # ----------------------------------- 噴灑滅火 ----------------------------------- #
+        self.controller.setZeroVelocity()
+        spry_future = self.fire_extinguisher_spry_client.call_async(Spry.Request())
+        rclpy.spin_until_future_complete(spry_future, timeout_sec=4.0)
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.controller.setZeroVelocity()
         self.mode = self.WAIT_MODE
