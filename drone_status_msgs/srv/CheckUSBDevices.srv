@@ -1,0 +1,5 @@
+# Request (空)
+---
+# Response
+bool success
+string[] missing_devices

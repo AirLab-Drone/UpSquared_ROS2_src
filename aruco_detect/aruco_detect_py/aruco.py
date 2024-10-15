@@ -41,15 +41,15 @@ class Aruco:
     # )
     # dist = np.array([[0.18866341, -0.22605576, 0.00306978, 0.00236462, 0.08722311]])
 
-    # VGA 180fps
-    mtx = np.array(
-        [
-            [479.23864074, 0.0, 322.41904053],
-            [0.0, 478.87010769, 208.59056289],
-            [0.0, 0.0, 1.0],
-        ]
-    )
-    dist = np.array([[-0.04673894, 0.12198613, 0.00533764, 0.00095581, -0.15779023]])
+    # # VGA 180fps
+    # mtx = np.array(
+    #     [
+    #         [479.23864074, 0.0, 322.41904053],
+    #         [0.0, 478.87010769, 208.59056289],
+    #         [0.0, 0.0, 1.0],
+    #     ]
+    # )
+    # dist = np.array([[-0.04673894, 0.12198613, 0.00533764, 0.00095581, -0.15779023]])
 
     # # simulation
     # mtx = np.array(
@@ -59,7 +59,7 @@ class Aruco:
 
     limit_list_size = 3
 
-    def __init__(self, marker_id, marker_config) -> None:
+    def __init__(self, marker_id, marker_config, camera_parameter=None) -> None:
         self.id = marker_id
         self.markerLength = marker_config["marker_length"]  # unit: meter
         self.offset_x = marker_config["offset_x"]
@@ -72,6 +72,9 @@ class Aruco:
         self.yaw_list = LimitedList(self.limit_list_size)
         self.pitch_list = LimitedList(self.limit_list_size)
         self.roll_list = LimitedList(self.limit_list_size)
+        if camera_parameter is not None:
+            self.mtx = camera_parameter["matrix"]
+            self.dist = camera_parameter["distortion"]
         self.rvec = None
         self.tvec = None
 

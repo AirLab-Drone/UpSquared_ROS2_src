@@ -50,7 +50,7 @@ const int CENTER_Y = 144;
 
 /* --------------------------------- 熱像儀info -------------------------------- */
 const std::string vendorId = "04b4";
-const std::string productId = "f9f9";
+const std::vector<std::string> productIds = {"f8f8", "f9f9"}; // USB 2.0, USB 3.0
 const std::string deviceDescription = "Cypress Semiconductor Corp. GuideCamera";
 
 
@@ -251,6 +251,8 @@ int main(int argc, char *argv[]) {
 
     std::string device_path = Find_Thermal_Device();
 
+    std::cout << "device path: " << device_path << std::endl;
+
     if (!device_path.empty()){
         std::cout << "Found Device Path: " << device_path << std::endl;
         ret = guide_usb_initial(device_path.c_str());
@@ -383,7 +385,6 @@ cv::Mat convertY16ToGray(const short *y16Data)
 
 
 std::string Find_Thermal_Device() {
-
     struct udev *udev = udev_new();
     if (!udev) {
         std::cerr << "Failed to initialize udev." << std::endl;
@@ -397,33 +398,36 @@ std::string Find_Thermal_Device() {
         return "";
     }
 
-    // 添加匹配规则：使用设备的厂商 ID、产品 ID 和描述信息
+    // 添加匹配廠商 ID 規則
     udev_enumerate_add_match_property(enumerate, "ID_VENDOR_ID", vendorId.c_str());
-    udev_enumerate_add_match_property(enumerate, "ID_MODEL_ID", productId.c_str());
-    udev_enumerate_add_match_property(enumerate, "ID_MODEL", deviceDescription.c_str());
-    udev_enumerate_scan_devices(enumerate);
 
-    struct udev_list_entry *devices = udev_enumerate_get_list_entry(enumerate);
-    struct udev_list_entry *entry;
-
+    // 掃描所有設備並尋找匹配的產品 ID
     std::string maxVideoPath = "";
+    for (const auto &productId : productIds) {
+        udev_enumerate_add_match_property(enumerate, "ID_MODEL_ID", productId.c_str());
+        udev_enumerate_scan_devices(enumerate);
 
-    udev_list_entry_foreach(entry, devices) {
-        const char *path = udev_list_entry_get_name(entry);
-        struct udev_device *device = udev_device_new_from_syspath(udev, path);
+        struct udev_list_entry *devices = udev_enumerate_get_list_entry(enumerate);
+        struct udev_list_entry *entry;
 
-        const char *deviceName = udev_device_get_sysname(device);
-        if (deviceName) {
-            const char *devicePath = udev_device_get_devnode(device);
-            if (devicePath && std::string(deviceName).find("video") != std::string::npos) {
-                std::cout << "Device Name: " << deviceName << std::endl;
-                std::cout << "Device Path: " << devicePath << std::endl;
-                if (maxVideoPath.empty() || comparePaths(devicePath, maxVideoPath)) {
-                    maxVideoPath = devicePath;
+        udev_list_entry_foreach(entry, devices) {
+            const char *path = udev_list_entry_get_name(entry);
+            struct udev_device *device = udev_device_new_from_syspath(udev, path);
+
+            const char *deviceName = udev_device_get_sysname(device);
+            if (deviceName) {
+                const char *devicePath = udev_device_get_devnode(device);
+                if (devicePath && std::string(deviceName).find("video") != std::string::npos) {
+                    std::cout << "Device Name: " << deviceName << std::endl;
+                    std::cout << "Device Path: " << devicePath << std::endl;
+                    // 比較路徑，選擇最新的 video path
+                    if (maxVideoPath.empty() || comparePaths(devicePath, maxVideoPath)) {
+                        maxVideoPath = devicePath;
+                    }
                 }
             }
+            udev_device_unref(device);
         }
-        udev_device_unref(device);
     }
 
     if (!maxVideoPath.empty()) {
@@ -439,6 +443,65 @@ std::string Find_Thermal_Device() {
 
     return "";
 }
+
+
+// std::string Find_Thermal_Device() {
+
+//     struct udev *udev = udev_new();
+//     if (!udev) {
+//         std::cerr << "Failed to initialize udev." << std::endl;
+//         return "";
+//     }
+
+//     struct udev_enumerate *enumerate = udev_enumerate_new(udev);
+//     if (!enumerate) {
+//         std::cerr << "Failed to create udev enumerator." << std::endl;
+//         udev_unref(udev);
+//         return "";
+//     }
+
+//     // 添加匹配规则：使用设备的厂商 ID、产品 ID 和描述信息
+//     udev_enumerate_add_match_property(enumerate, "ID_VENDOR_ID", vendorId.c_str());
+//     udev_enumerate_add_match_property(enumerate, "ID_MODEL_ID", productId.c_str());
+//     udev_enumerate_add_match_property(enumerate, "ID_MODEL", deviceDescription.c_str());
+//     udev_enumerate_scan_devices(enumerate);
+
+//     struct udev_list_entry *devices = udev_enumerate_get_list_entry(enumerate);
+//     struct udev_list_entry *entry;
+
+//     std::string maxVideoPath = "";
+
+//     udev_list_entry_foreach(entry, devices) {
+//         const char *path = udev_list_entry_get_name(entry);
+//         struct udev_device *device = udev_device_new_from_syspath(udev, path);
+
+//         const char *deviceName = udev_device_get_sysname(device);
+//         if (deviceName) {
+//             const char *devicePath = udev_device_get_devnode(device);
+//             if (devicePath && std::string(deviceName).find("video") != std::string::npos) {
+//                 std::cout << "Device Name: " << deviceName << std::endl;
+//                 std::cout << "Device Path: " << devicePath << std::endl;
+//                 if (maxVideoPath.empty() || comparePaths(devicePath, maxVideoPath)) {
+//                     maxVideoPath = devicePath;
+//                 }
+//             }
+//         }
+//         udev_device_unref(device);
+//     }
+
+//     if (!maxVideoPath.empty()) {
+//         udev_enumerate_unref(enumerate);
+//         udev_unref(udev);
+//         return maxVideoPath;
+//     }
+
+//     std::cout << "Device: Cypress Semiconductor Corp. GuideCamera was not found :(" << std::endl;
+
+//     udev_enumerate_unref(enumerate);
+//     udev_unref(udev);
+
+//     return "";
+// }
 
 
 bool comparePaths(const std::string& path1, const std::string& path2) {
