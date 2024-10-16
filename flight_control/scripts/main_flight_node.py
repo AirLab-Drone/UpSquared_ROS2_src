@@ -100,14 +100,15 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        if not self.mission.simpleTakeoff():
-            self.get_logger().info("takeoff fail")
+        # if not self.mission.simpleTakeoff():
+        #     self.get_logger().info("takeoff fail")
+        #     self.flow_mode = self.STOP_FLOW
+        #     return
+        # self.get_logger().info("takeoff success")
+        if not self.mission.fireDistinguish():
+            self.get_logger().info("fire distinguish fail")
             self.flow_mode = self.STOP_FLOW
             return
-        self.get_logger().info("land to platform")
-        self.controller.setMode()
-        time.sleep(4)
-        self.mission.landedOnPlatform()
         self.flow_mode = self.STOP_FLOW
 
     def flow1(self):

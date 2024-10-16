@@ -12,6 +12,7 @@ class FireExtinguisher(Node):
 
         
     def spry_callback(self, request, response):
+        self.get_logger().info('fire extinguisher service is called')
         try:
             pin = gpio.GPIOPin(14, gpio.OUT)
             pin.write(14, gpio.HIGH)
@@ -20,8 +21,8 @@ class FireExtinguisher(Node):
             response.success = True
         except:
             response.success = False
+        self.get_logger().info(f"response: {response}")
         return response
-
 
 def main(args=None):
     rclpy.init(args=args)

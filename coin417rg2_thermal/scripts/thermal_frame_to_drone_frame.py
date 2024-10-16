@@ -12,6 +12,7 @@ class ThermalFrameToDroneFrame(Node):
 
     def __init__(self):
         super().__init__('thermal_frame_to_drone_frame')
+        # -------------------------------- subscriptions -------------------------------- #
         self.subscription_thermal = self.create_subscription(
             ThermalAlert,
             '/coin417rg2_thermal/hot_spot',
@@ -21,26 +22,34 @@ class ThermalFrameToDroneFrame(Node):
             Range,
             '/mavros/rangefinder_pub',
             self.rangefinder_callback,
-            10)
+            rclpy.qos.qos_profile_sensor_data)
+        # -------------------------------- publishers -------------------------------- #
         self.hot_spot_drone_frame_pub = self.create_publisher(ThermalAlert, '/coin417rg2_thermal/hot_spot_drone_frame', 10)
+        # --------------------------------- variables -------------------------------- #
+        # hot spot in thermal frame
         self.x_pixel = 0
         self.y_pixel = 0
         self.temperature = 0.0
+        # rangefinder altitude
         self.rangefinder_alt = 0.0
-        self.meter_per_pixel = self.compute_meter_per_pixel()
+        # thermal camera parameters
+        config = self.get_yaml_config('coin417rg2_thermal', 'thermal_camera.yaml')
+        self.thermal_fov = config['thermal_camera_params']['fov']
+        self.thermal_image_width = config['thermal_camera_params']['width']
 
     def hot_spot_pose_callback(self, msg):
-        if self.meter_per_pixel == 0.0: #如果還沒有算出meter_per_pixel，就不要publish
+        meter_per_pixel = self.compute_meter_per_pixel()
+        if meter_per_pixel == 0.0: #如果還沒有算出meter_per_pixel，就不要publish
             return
-        
+
         self.x_pixel = msg.x
         self.y_pixel = msg.y
         self.temperature = msg.temperature
         hot_spot_drone_frame = ThermalAlert()
-        hot_spot_drone_frame.x = self.x_pixel * self.meter_per_pixel
-        hot_spot_drone_frame.y = self.y_pixel * self.meter_per_pixel
+        hot_spot_drone_frame.x = self.x_pixel * meter_per_pixel
+        hot_spot_drone_frame.y = self.y_pixel * meter_per_pixel
         hot_spot_drone_frame.temperature = self.temperature
-        print(hot_spot_drone_frame.x, hot_spot_drone_frame.y, hot_spot_drone_frame.temperature)
+        self.get_logger().info(f'temperature: {hot_spot_drone_frame.temperature}')
         self.hot_spot_drone_frame_pub.publish(hot_spot_drone_frame)
 
     def rangefinder_callback(self, msg):
@@ -59,12 +68,8 @@ class ThermalFrameToDroneFrame(Node):
         return config
 
     def compute_meter_per_pixel(self):
-        config = self.get_yaml_config('coin417rg2_thermal', 'thermal_camera.yaml')
-        if config is None:
-            return 0.0
-
-        fov = config['thermal_camera_params']['fov']
-        image_width = config['thermal_camera_params']['width']
+        fov = math.radians(self.thermal_fov)
+        image_width = self.thermal_image_width
         return 2 * self.rangefinder_alt * math.tan(fov / 2) / image_width
 
 def main(args=None):

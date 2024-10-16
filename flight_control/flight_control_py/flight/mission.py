@@ -6,7 +6,6 @@ from flight_control_py.tool.get_yaml_config import get_yaml_config
 from flight_control_py.flight.base_control import BaseControl as FlightControl
 from flight_control_py.flight.flight_controller_info import FlightInfo
 from flight_control_py.aruco_visual.aruco import Aruco
-from flight_control.srv import GetCloestAruco
 from aruco_msgs.msg import Marker
 import time
 import yaml
@@ -45,10 +44,10 @@ class Mission:
             Marker, "closest_aruco", self.closest_aruco_callback, 10
         )
         self.sub = self.node.create_subscription(
-            ThermalAlert, "hot_spot_pos", self.hot_spot_callback, 10
+            ThermalAlert, "/coin417rg2_thermal/hot_spot_drone_frame", self.hot_spot_callback, 10
         )
         # ------------------------------ service client ------------------------------ #
-        self.fire_extinguisher_spry_client = self.node.create_client(Spry, "spry")
+        self.fire_extinguisher_spry_client = self.node.create_client(Spry, "/spry")
         while not self.fire_extinguisher_spry_client.wait_for_service(timeout_sec=1.0):
             self.node.get_logger().info("service not available, waiting again...")
         # ---------------------------- aruco marker config --------------------------- #
@@ -66,7 +65,7 @@ class Mission:
 
     def hot_spot_callback(self, msg):
         self.last_hot_spot_update_time = rclpy.clock.Clock().now()
-        self.hot_spot = msg.data
+        self.hot_spot = msg
 
     # ---------------------------------------------------------------------------- #
     #                                   Function                                   #
@@ -350,19 +349,23 @@ class Mission:
         # --------------------------------- variable --------------------------------- #
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
         MAX_YAW = 15 * 3.14 / 180  # 15度/s
+        is_success = True
         # ----------------------------------- 滅火任務 ----------------------------------- #
         while True:
             # 如果溫度低於60度就停止
             if self.hot_spot.temperature < 60:
+                self.node.get_logger().info(f"temperature is lower than 60, {self.hot_spot.temperature}")
                 self.controller.setZeroVelocity()
                 continue
             # 更新時間超過1秒就停止
             during_time = rclpy.clock.Clock().now() - self.last_hot_spot_update_time
             if during_time > rclpy.time.Duration(seconds=1):
+                self.node.get_logger().info("hot spot update time out")
                 self.controller.setZeroVelocity()
                 continue
             # 如果座標都是零就停止
             if self.hot_spot.x == 0 and self.hot_spot.y == 0:
+                self.node.get_logger().info("hot spot is zero")
                 self.controller.setZeroVelocity()
                 continue
             # ----------------------------------- 飛往火源 ----------------------------------- #
@@ -374,13 +377,23 @@ class Mission:
             max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
             move_x = move_x / different_move * max_speed_temp
             move_y = move_y / different_move * max_speed_temp
+            self.node.get_logger().info(
+                f"move_x: {move_x:.2f}, move_y: {move_y:.2f}, move_z: {move_z:.2f}, move_yaw: {move_yaw:.2f}"
+            )
             self.controller.sendPositionTargetVelocity(
                 self.hot_spot.x, self.hot_spot.y, 0, 0
             )
         # ----------------------------------- 噴灑滅火 ----------------------------------- #
         self.controller.setZeroVelocity()
+        self.node.get_logger().info("fire distinguish")
         spry_future = self.fire_extinguisher_spry_client.call_async(Spry.Request())
-        rclpy.spin_until_future_complete(spry_future, timeout_sec=4.0)
+        self.node.executor.spin_until_future_complete(spry_future, timeout_sec=4)
+        if spry_future.result() is None:
+            is_success = False
+        else:
+            is_success = spry_future.result().success
+        self.node.get_logger().info(f"fire distinguish result: {is_success}")
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.controller.setZeroVelocity()
         self.mode = self.WAIT_MODE
+        return is_success
