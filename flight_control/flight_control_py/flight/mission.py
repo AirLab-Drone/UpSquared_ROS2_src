@@ -47,9 +47,9 @@ class Mission:
             ThermalAlert, "/coin417rg2_thermal/hot_spot_drone_frame", self.hot_spot_callback, 10
         )
         # ------------------------------ service client ------------------------------ #
-        self.fire_extinguisher_spry_client = self.node.create_client(Spry, "/spry")
-        while not self.fire_extinguisher_spry_client.wait_for_service(timeout_sec=1.0):
-            self.node.get_logger().info("service not available, waiting again...")
+        # self.fire_extinguisher_spry_client = self.node.create_client(Spry, "/spry")
+        # while not self.fire_extinguisher_spry_client.wait_for_service(timeout_sec=1.0):
+        #     self.node.get_logger().info("service not available, waiting again...")
         # ---------------------------- aruco marker config --------------------------- #
         self.markers_config = get_yaml_config("aruco_detect", "aruco_markers.yaml")[
             "aruco_markers"
@@ -287,9 +287,8 @@ class Mission:
         )
 
         # --------------------------------- function --------------------------------- #
-        # 如果距離範圍在threshold內就回傳True
-        def around(a, b, threshold=0.2):
-            return abs(a - b) < threshold
+        # 如果距離範圍在threshold內就回傳True    self.spry_pin = gpio.GPIOPin(14, gpio.OUT)
+
 
         # ------------------------------- start mission ------------------------------ #
         # 等待取得uwb座標
@@ -364,7 +363,7 @@ class Mission:
                 self.controller.setZeroVelocity()
                 continue
             # 如果座標都是零就停止
-            if self.hot_spot.x == 0 and self.hot_spot.y == 0:
+            if self.hot_spot.x == 0 and self.hot_spot.y == 0 and self.hot_spot.temperature != 0:
                 self.node.get_logger().info("hot spot is zero")
                 self.controller.setZeroVelocity()
                 continue
@@ -386,12 +385,12 @@ class Mission:
         # ----------------------------------- 噴灑滅火 ----------------------------------- #
         self.controller.setZeroVelocity()
         self.node.get_logger().info("fire distinguish")
-        spry_future = self.fire_extinguisher_spry_client.call_async(Spry.Request())
-        self.node.executor.spin_until_future_complete(spry_future, timeout_sec=4)
-        if spry_future.result() is None:
-            is_success = False
-        else:
-            is_success = spry_future.result().success
+        # spry_future = self.fire_extinguisher_spry_client.call_async(Spry.Request())
+        # self.node.executor.spin_until_future_complete(spry_future, timeout_sec=4)
+        # if spry_future.result() is None:
+        #     is_success = False
+        # else:
+        #     is_success = spry_future.result().success
         self.node.get_logger().info(f"fire distinguish result: {is_success}")
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.controller.setZeroVelocity()

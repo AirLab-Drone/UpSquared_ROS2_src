@@ -3,13 +3,13 @@
 thermal_camera_pose:
   x: 0.0
   y: 0.125
-  z: 0.0
+  z: -0.277
   roll: 0.0
   pitch: 0.0
   yaw: 180.0
 # 熱像儀的視角
 # unit is degree
 thermal_camera_params:
-  fov: 60.0
+  fov: 30.1
   width: 640.0  
   height: 480.0

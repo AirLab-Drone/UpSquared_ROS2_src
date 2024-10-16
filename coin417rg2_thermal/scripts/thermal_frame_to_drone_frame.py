@@ -86,9 +86,11 @@ class ThermalFrameToDroneFrame(Node):
         """
         self.thermal_fov = self.config["thermal_camera_params"]["fov"]
         self.thermal_image_width = self.config["thermal_camera_params"]["width"]
+        offset_z = self.config["thermal_camera_pose"]["z"]
         fov = math.radians(self.thermal_fov)
-        image_width = self.thermal_image_width
-        meter_per_pixel = 2 * self.rangefinder_alt * math.tan(fov / 2) / image_width
+        hight_ground_to_thermal = self.rangefinder_alt + offset_z
+        image_width_pixel = self.thermal_image_width
+        meter_per_pixel = 2 * hight_ground_to_thermal * math.tan(fov / 2) / image_width_pixel
         return x_pixel * meter_per_pixel, y_pixel * meter_per_pixel
 
     def rotate_and_offset_thermal_coordinate(self, x_meter, y_meter):
