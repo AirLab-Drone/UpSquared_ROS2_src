@@ -354,7 +354,7 @@ class Mission:
         # ----------------------------------- 滅火任務 ----------------------------------- #
         while True:
             # 如果溫度低於60度就停止
-            if self.hot_spot.temperature < 60:
+            if self.hot_spot.temperature < 50:
                 self.node.get_logger().info(
                     f"temperature is lower than 60, {self.hot_spot.temperature}"
                 )
@@ -377,13 +377,13 @@ class Mission:
                 continue
             # ----------------------------------- 飛往火源 ----------------------------------- #
             different_move = math.sqrt(self.hot_spot.x**2 + self.hot_spot.y**2)
-            if different_move < 0.5:  # 離火原距離小於0.5m就停止，開始滅火
+            if different_move < 0.1:  # 離火原距離小於0.5m就停止，開始滅火
                 self.controller.setZeroVelocity()
                 break
             # 限制最大速度
             max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
-            move_x = move_x / different_move * max_speed_temp
-            move_y = move_y / different_move * max_speed_temp
+            move_x = self.hot_spot.x / different_move * max_speed_temp
+            move_y = self.hot_spot.y / different_move * max_speed_temp
             self.node.get_logger().info(f"move_x: {move_x:.2f}, move_y: {move_y:.2f}")
             self.controller.sendPositionTargetVelocity(move_x, move_y, 0, 0)
         # ----------------------------------- 噴灑滅火 ----------------------------------- #
