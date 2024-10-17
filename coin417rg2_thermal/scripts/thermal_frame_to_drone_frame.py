@@ -56,7 +56,9 @@ class ThermalFrameToDroneFrame(Node):
             )
         )
         hot_spot_drone_frame.temperature = self.temperature
-        self.get_logger().info(f"temperature: {hot_spot_drone_frame.temperature}")
+        self.get_logger().info(
+            f"hot spot drone frame: x: {hot_spot_drone_frame.x}, y: {hot_spot_drone_frame.y}, temperature: {hot_spot_drone_frame.temperature}"
+        )
         self.hot_spot_drone_frame_pub.publish(hot_spot_drone_frame)
 
     def rangefinder_callback(self, msg):
@@ -90,7 +92,9 @@ class ThermalFrameToDroneFrame(Node):
         fov = math.radians(self.thermal_fov)
         hight_ground_to_thermal = self.rangefinder_alt + offset_z
         image_width_pixel = self.thermal_image_width
-        meter_per_pixel = 2 * hight_ground_to_thermal * math.tan(fov / 2) / image_width_pixel
+        meter_per_pixel = (
+            2 * hight_ground_to_thermal * math.tan(fov / 2) / image_width_pixel
+        )
         return x_pixel * meter_per_pixel, y_pixel * meter_per_pixel
 
     def rotate_and_offset_thermal_coordinate(self, x_meter, y_meter):

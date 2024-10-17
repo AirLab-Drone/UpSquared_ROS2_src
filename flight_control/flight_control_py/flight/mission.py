@@ -44,7 +44,10 @@ class Mission:
             Marker, "closest_aruco", self.closest_aruco_callback, 10
         )
         self.sub = self.node.create_subscription(
-            ThermalAlert, "/coin417rg2_thermal/hot_spot_drone_frame", self.hot_spot_callback, 10
+            ThermalAlert,
+            "/coin417rg2_thermal/hot_spot_drone_frame",
+            self.hot_spot_callback,
+            10,
         )
         # ------------------------------ service client ------------------------------ #
         # self.fire_extinguisher_spry_client = self.node.create_client(Spry, "/spry")
@@ -289,7 +292,6 @@ class Mission:
         # --------------------------------- function --------------------------------- #
         # 如果距離範圍在threshold內就回傳True    self.spry_pin = gpio.GPIOPin(14, gpio.OUT)
 
-
         # ------------------------------- start mission ------------------------------ #
         # 等待取得uwb座標
         while (
@@ -353,7 +355,9 @@ class Mission:
         while True:
             # 如果溫度低於60度就停止
             if self.hot_spot.temperature < 60:
-                self.node.get_logger().info(f"temperature is lower than 60, {self.hot_spot.temperature}")
+                self.node.get_logger().info(
+                    f"temperature is lower than 60, {self.hot_spot.temperature}"
+                )
                 self.controller.setZeroVelocity()
                 continue
             # 更新時間超過1秒就停止
@@ -363,7 +367,11 @@ class Mission:
                 self.controller.setZeroVelocity()
                 continue
             # 如果座標都是零就停止
-            if self.hot_spot.x == 0 and self.hot_spot.y == 0 and self.hot_spot.temperature != 0:
+            if (
+                self.hot_spot.x == 0
+                and self.hot_spot.y == 0
+                and self.hot_spot.temperature != 0
+            ):
                 self.node.get_logger().info("hot spot is zero")
                 self.controller.setZeroVelocity()
                 continue
@@ -376,12 +384,8 @@ class Mission:
             max_speed_temp = min(max(different_move, -MAX_SPEED), MAX_SPEED)
             move_x = move_x / different_move * max_speed_temp
             move_y = move_y / different_move * max_speed_temp
-            self.node.get_logger().info(
-                f"move_x: {move_x:.2f}, move_y: {move_y:.2f}, move_z: {move_z:.2f}, move_yaw: {move_yaw:.2f}"
-            )
-            self.controller.sendPositionTargetVelocity(
-                self.hot_spot.x, self.hot_spot.y, 0, 0
-            )
+            self.node.get_logger().info(f"move_x: {move_x:.2f}, move_y: {move_y:.2f}")
+            self.controller.sendPositionTargetVelocity(move_x, move_y, 0, 0)
         # ----------------------------------- 噴灑滅火 ----------------------------------- #
         self.controller.setZeroVelocity()
         self.node.get_logger().info("fire distinguish")
