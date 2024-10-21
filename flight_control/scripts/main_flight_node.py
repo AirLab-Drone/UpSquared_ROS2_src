@@ -132,6 +132,16 @@ class MainFlightNode(Node):
         #     self.get_logger().info("landedOnPlatform fail")
         #     self.flow_mode = self.STOP_FLOW
         #     return
+        self.get_logger().info("navigateTo home")
+        if not self.mission.navigateTo(0, 0, 2):
+            self.get_logger().info("navigateTo fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        self.get_logger().info("landedOnPlatform")
+        if not self.mission.landedOnPlatform():
+            self.get_logger().info("landedOnPlatform fail")
+            self.flow_mode = self.STOP_FLOW
+            return
         self.flow_mode = self.STOP_FLOW
 
     def flow1(self):
