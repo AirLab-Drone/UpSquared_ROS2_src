@@ -111,34 +111,18 @@ ament_target_dependencies(COIN417RG2_ros2_node
   thermal_msgs
 )
 
-
-
-
-#/* ----------------------- thermal fram to drone frame ---------------------- */
-add_executable(thermal_frame_to_drone_frame src/thermal_frame_to_drone_frame.cpp)
-
-ament_target_dependencies(thermal_frame_to_drone_frame
-  rclcpp
-  std_msgs
-  sensor_msgs
-  yaml-cpp
-  thermal_msgs
-)
-target_link_libraries(thermal_frame_to_drone_frame
-  yaml-cpp
+install(TARGETS
+  test_node
+  COIN417RG2_ros2_node
+  DESTINATION lib/${PROJECT_NAME}
 )
 
+#/* ----------------------------- python scripts ----------------------------- */
 ament_python_install_package(${PROJECT_NAME}_py)
 # Install Python executables
 file(GLOB SCRIPTS "scripts/*.py")
 install(PROGRAMS
   ${SCRIPTS}
-  DESTINATION lib/${PROJECT_NAME}
-)
-install(TARGETS
-  test_node
-  COIN417RG2_ros2_node
-  thermal_frame_to_drone_frame
   DESTINATION lib/${PROJECT_NAME}
 )
 

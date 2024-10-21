@@ -53,7 +53,7 @@ class FlightInfo:
         self.node.create_subscription(
             Float64,
             "/mavros/global_position/rel_alt",
-            self.compassCallback,
+            self.relAltCallback,
             rclpy.qos.qos_profile_sensor_data,
         )
         self.node.create_subscription(

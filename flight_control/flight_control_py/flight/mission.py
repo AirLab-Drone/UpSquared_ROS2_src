@@ -291,7 +291,8 @@ class Mission:
 
         # --------------------------------- function --------------------------------- #
         # 如果距離範圍在threshold內就回傳True    self.spry_pin = gpio.GPIOPin(14, gpio.OUT)
-
+        def around(a, b, threshold=0.2):
+            return abs(a - b) < threshold
         # ------------------------------- start mission ------------------------------ #
         # 等待取得uwb座標
         while (
