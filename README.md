@@ -5,6 +5,24 @@
 ```
 pip install pyudev
 ```
+相機權限
+1. 編輯 rc.local 文件（如果沒有，則創建一個）：
+```
+sudo nano /etc/rc.local
+```
+2. 在文件中添加以下內容，將 chmod 指令放在 exit 0 之前：
+```
+#!/bin/bash
+chmod 777 /dev/video*
+exit 0
+```
+
+3. 確保 rc.local 文件具有可執行權限：
+
+```
+sudo chmod +x /etc/rc.local
+```
+
 
 ### flight_control
 ```
