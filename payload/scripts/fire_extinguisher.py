@@ -15,7 +15,6 @@ class FireExtinguisher(Node):
         # ------------------------------ gpio pin setup ------------------------------ #
         self.spry_pin = GPIO(23, "out")
         self.hold_pin = GPIO(24, "out")
-        self.check_write_pin = GPIO(22, "out")
         self.check_read_pin = GPIO(27, "in")
 
     def spry_callback(self, request, response):
@@ -47,10 +46,7 @@ class FireExtinguisher(Node):
     def check_fire_extinguisher(self, request, response):
         self.get_logger().info("check_fire_extinguisher service is called")
         try:
-            self.check_write_pin.write(True)
-            time.sleep(0.5)
-            response.success = self.check_read_pin.read()
-            self.check_write_pin.write(False)
+            response.success = not self.check_read_pin.read()
         except Exception as e:
             self.get_logger().info(f"error: {e}")
             response.success = False
