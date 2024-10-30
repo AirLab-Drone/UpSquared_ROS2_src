@@ -48,7 +48,7 @@ const int CENTER_Y = 144;
 
 /* --------------------------------- 熱像儀info -------------------------------- */
 const std::string vendorId = "04b4";
-const std::string productId = "f9f9";
+const std::string productId = "f8f8";
 const std::string deviceDescription = "Cypress Semiconductor Corp. GuideCamera";
 
 
@@ -241,6 +241,8 @@ int main(int argc, char *argv[]) {
 
     std::string device_path = Find_Thermal_Device();
 
+    std::cout << "device path: " << device_path << std::endl;
+
     if (!device_path.empty()){
         std::cout << "Found Device Path: " << device_path << std::endl;
         ret = guide_usb_initial(device_path.c_str());
@@ -370,6 +372,8 @@ cv::Mat convertY16ToGray(const short *y16Data)
     frameMat.convertTo(gray8Bit, CV_8U); // Scale to 0-255
     return gray8Bit;
 }
+
+
 
 
 std::string Find_Thermal_Device() {

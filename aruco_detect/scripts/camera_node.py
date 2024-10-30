@@ -42,6 +42,7 @@ Camera Controls
 import cv2
 import numpy as np
 import time
+import pyudev
 from cv_bridge import CvBridge
 
 import rclpy
@@ -55,6 +56,13 @@ class CaptureImage(Node):
 
     def __init__(self):
         super().__init__("camera_node")
+
+
+        # 自動偵測目標設備的路徑
+        self.device_path = self.find_camera_device("0c45", "6364")
+        if not self.device_path:
+            self.get_logger().error("無法找到目標攝影機設備")
+            return
 
 
         # ---------------------- Define the parameter descriptor --------------------- #
@@ -94,7 +102,7 @@ class CaptureImage(Node):
 
 
         # ----------------------------------- 相機設定 ----------------------------------- #
-        self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(self.device_path)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         self.cap.set(cv2.CAP_PROP_FPS, 180)
@@ -120,6 +128,19 @@ class CaptureImage(Node):
 
         self.set_auto_exposure_srv = self.create_service(SetBool, 'set_auto_exposure', self.set_auto_exposure_callback)
         
+
+    def find_camera_device(self, vendor_id, product_id):
+        context = pyudev.Context()
+        for device in context.list_devices(subsystem="video4linux"):
+            parent = device.find_parent("usb", "usb_device")
+            if parent:
+                if (parent.attributes.get("idVendor") == vendor_id.encode() and
+                    parent.attributes.get("idProduct") == product_id.encode()):
+                    self.get_logger().info(f"找到目標攝影機: {device.device_node}")
+                    return device.device_node
+        return None
+
+
 
     def parameter_callback(self, params):
         for param in params:

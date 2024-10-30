@@ -1,5 +1,24 @@
 # UpSquaredWorkSpace
 
+
+### aruco_detect
+```
+pip install pyudev
+```
+
+### flight_control
+```
+pip install opencv-python opencv-contrib-python scipy cv_bridge
+```
+mavros  
+```
+sudo apt install ros-humble-mavros ros-humble-mavros-extras
+wget https://raw.githubusercontent.com/mavlink/mavros/master/mavros/scripts/install_geographiclib_datasets.sh
+chmod a+x install_geographiclib_datasets.sh
+./install_geographiclib_datasets.sh
+```
+
+
 ## 環境
 <table>
 <tbody>
