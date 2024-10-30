@@ -9,7 +9,7 @@
 
 import rclpy
 from rclpy.node import Node
-from drone_status.srv import CheckUSBDevices  # 使用新建的服務
+from drone_status_msgs.srv import CheckUSBDevices  # 使用新建的服務
 import subprocess
 
 class USBChecker(Node):
