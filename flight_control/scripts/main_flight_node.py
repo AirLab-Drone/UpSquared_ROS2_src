@@ -100,31 +100,21 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        # self.get_logger().info("takeoff")
-        # # if not self.mission.simpleTakeoff():
-        # #     self.get_logger().info("takeoff fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
-        if not self.controller.setMode():
-            self.get_logger().info("setMode fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
-        time.sleep(4)
-        # self.get_logger().info("navigateTo")
-        # if not self.mission.navigateTo(1.5, 0, 2):
-        #     self.get_logger().info("navigateTo fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
-        # self.get_logger().info("navigateTo")
-        # if not self.mission.navigateTo(1.5, 0, 2):
-        #     self.get_logger().info("navigateTo fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
         if not self.controller.setMode():
             self.get_logger().info("setMode fail")
             self.flow_mode = self.STOP_FLOW
             return
         time.sleep(4)
+        # self.get_logger().info("takeoff")
+        # # if not self.mission.simpleTakeoff():
+        # #     self.get_logger().info("takeoff fail")
+        #     self.flow_mode = self.STOP_FLOW
+        #     return
+        # self.get_logger().info("navigateTo")
+        # if not self.mission.navigateTo(1.5, 0, 2):
+        #     self.get_logger().info("navigateTo fail")
+        #     self.flow_mode = self.STOP_FLOW
+        #     return
         self.get_logger().info("fire distinguish")
         if not self.mission.fireDistinguish():
             self.get_logger().info("fire distinguish fail")
