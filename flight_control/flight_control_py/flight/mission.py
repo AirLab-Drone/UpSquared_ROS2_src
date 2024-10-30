@@ -355,7 +355,7 @@ class Mission:
         # ----------------------------------- 滅火任務 ----------------------------------- #
         while True:
             # 如果溫度低於60度就停止
-            if self.hot_spot.temperature < 50:
+            if self.hot_spot.temperature < 40:
                 self.node.get_logger().info(
                     f"temperature is lower than 60, {self.hot_spot.temperature}"
                 )
