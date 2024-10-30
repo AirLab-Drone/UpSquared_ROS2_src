@@ -12,7 +12,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-# Include Cpp "include" directory
+
 include_directories(include)
 # Create Cpp executable
 add_executable(cpp_executable src/cpp_node.cpp)
@@ -26,17 +26,18 @@ install(TARGETS
 ament_python_install_package(${PROJECT_NAME}_py)
 # Install Python executables
 file(GLOB SCRIPTS "scripts/*.py")
-
+message(STATUS "Looking for scripts in ${CMAKE_CURRENT_SOURCE_DIR}/scripts")
 install(PROGRAMS
   ${SCRIPTS}
   DESTINATION lib/${PROJECT_NAME}
 )
 
-
 rosidl_generate_interfaces(${PROJECT_NAME}
   srv/Spry.srv
+  srv/CheckPayload.srv
+  srv/HoldPayload.srv
   DEPENDENCIES std_msgs
- )
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
