@@ -29,7 +29,7 @@ def generate_launch_description():
     camera_config_file = os.path.join(
         get_package_share_directory("aruco_detect"),
         "config",
-        "camera_frame_to_drone_frame.yaml",
+        "simulation_camera_parameter.yaml",
     )
 
     return LaunchDescription(

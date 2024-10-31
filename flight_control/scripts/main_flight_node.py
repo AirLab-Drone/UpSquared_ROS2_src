@@ -115,6 +115,7 @@ class MainFlightNode(Node):
         滅火流程
         起飛 --> 飛到指定位置 --> 飛回原點 --> 降落
         """
+        self.get_logger().info('start takeoff')
         if not self.mission.simpleTakeoff():
             self.get_logger().info("takeoff fail")
             self.flow_mode = self.STOP_FLOW
@@ -125,19 +126,25 @@ class MainFlightNode(Node):
         #     self.get_logger().info("navigateTo fail")
         #     self.flow_mode = self.STOP_FLOW
         #     return
-        # set target position
+        self.get_logger().info('start navigateTo')
         if not self.mission.navigateTo(1, 2, 2):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
         # wait for 3 seconds
+        self.get_logger().info('fight fire')
         time.sleep(3)
         # set home position
+        self.get_logger().info('start go home')
         if not self.mission.navigateTo(0, 0, 2):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
-        self.mission.landedOnPlatform()
+        self.get_logger().info('start land on platform')
+        if not self.mission.landedOnPlatform():
+            self.get_logger().info("land fail")
+            self.flow_mode = self.STOP_FLOW
+            return
         self.flow_mode = self.STOP_FLOW
 
 
