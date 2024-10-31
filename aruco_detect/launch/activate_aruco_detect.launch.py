@@ -18,12 +18,22 @@ def generate_launch_description():
         default_value="False",  # 預設值必須是字串
         description="Enable camera image display",
     )
+    # yaml檔案的路徑
+    aruco_markers_file = os.path.join(
+        get_package_share_directory("aruco_detect"),
+        "config",
+        "aruco_markers.yaml",
+    )
+    camera_config_file = os.path.join(
+        get_package_share_directory("aruco_detect"),
+        "config",
+        "camera_frame_to_drone_frame.yaml",
+    )
 
     return LaunchDescription(
         [
             debug_mode,
             show_image,
-
             Node(
                 package="aruco_detect",
                 executable="camera_node.py",
@@ -35,27 +45,12 @@ def generate_launch_description():
             ),
             Node(
                 package="aruco_detect",
-                executable="detect_aruco_node.py",
+                executable="aruco_detector_node.py",
                 output="screen",
                 parameters=[
-                    {"show_image": LaunchConfiguration("show_image")},
-                    {"debug": LaunchConfiguration("debug")},  # 將debug傳入節點參數
-                ],
-            ),
-            Node(
-                package="aruco_detect",
-                executable="median_filter_node.py",
-                output="screen",
-                parameters=[
-                    {"debug": LaunchConfiguration("debug")},  # 將debug傳入節點參數
-                ],
-            ),
-            Node(
-                package="aruco_detect",
-                executable="closest_marker_publisher.py",
-                output="screen",
-                parameters=[
-                    {"debug": LaunchConfiguration("debug")},  # 將debug傳入節點參數
+                    {"simulation": False},
+                    {"aruco_marker_config_file": aruco_markers_file},
+                    {"camera_config_file": camera_config_file},
                 ],
             ),
         ]

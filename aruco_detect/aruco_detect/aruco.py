@@ -59,7 +59,7 @@ class Aruco:
 
     limit_list_size = 3
 
-    def __init__(self, marker_id, marker_config) -> None:
+    def __init__(self, marker_id, marker_config, camera_parameter) -> None:
         self.id = marker_id
         self.markerLength = marker_config["marker_length"]  # unit: meter
         self.offset_x = marker_config["offset_x"]
@@ -72,6 +72,8 @@ class Aruco:
         self.yaw_list = LimitedList(self.limit_list_size)
         self.pitch_list = LimitedList(self.limit_list_size)
         self.roll_list = LimitedList(self.limit_list_size)
+        self.mtx = camera_parameter["matrix"]
+        self.dist = camera_parameter["distortion"]
         self.rvec = None
         self.tvec = None
 

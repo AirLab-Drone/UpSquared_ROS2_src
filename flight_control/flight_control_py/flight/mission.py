@@ -4,8 +4,7 @@ from rclpy.node import Node
 from flight_control_py.tool.PID import PID
 from flight_control_py.flight.base_control import BaseControl as FlightControl
 from flight_control_py.flight.flight_controller_info import FlightInfo
-from flight_control_py.aruco_visual.aruco import Aruco
-from flight_control.srv import GetCloestAruco
+from aruco_detect.aruco_detect.aruco import Aruco
 from aruco_msgs.msg import Marker
 import time
 import yaml
@@ -32,7 +31,6 @@ class Mission:
         self.flight_info = flight_info
         self.node = node
         self.closest_aruco = None
-        # self.getCloestArucoClient = self.node.create_client(GetCloestAruco, 'get_cloest_aruco')
         self.sub = self.node.create_subscription(
             Marker, "closest_aruco", self.closest_aruco_callback, 10
         )
