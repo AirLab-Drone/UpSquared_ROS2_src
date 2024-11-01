@@ -11,8 +11,7 @@ from sensor_msgs.msg import Image
 
 from geometry_msgs.msg import PoseWithCovariance, Point, Quaternion
 
-from aruco_detect.aruco import Aruco
-from flight_control_py.tool.video_capture_from_ros2 import VideoCaptureFromRos2
+from aruco_detect_py.aruco import Aruco
 from aruco_msgs.msg import Marker, MarkerArray
 
 
@@ -131,6 +130,10 @@ class ArucoDetector(Node):
             marker_array_temp.header.frame_id = "aruco_list"
             marker_array_temp.header.stamp = rclpy.clock.Clock().now().to_msg()
             self.aruco_publisher.publish(marker_array_temp)
+            # -----------------show image-----------------
+            if self.frame is not None:
+                cv2.imshow("frame", self.frame)
+                cv2.waitKey(1)
 
     def get_closest_aruco_callback(self):
 
