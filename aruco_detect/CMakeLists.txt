@@ -16,18 +16,20 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# for python node
-ament_python_install_package(${PROJECT_NAME}) # for importing the package in "aruco_detect/aruco_detect"
+# Install Python modules
+ament_python_install_package(${PROJECT_NAME}_py)
+# Install Python executables
+file(GLOB SCRIPTS "scripts/*.py")
 
 install(PROGRAMS
-  scripts/camera_node.py
-  scripts/detect_aruco_node.py
-  scripts/kalman_node.py
-  scripts/median_filter_node.py
-  scripts/closest_marker_publisher.py
+  ${SCRIPTS}
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# rosidl_generate_interfaces(${PROJECT_NAME}
+#   src/service_name.srv
+#   DEPENDENCIES std_msgs
+# )
 
 install(DIRECTORY
   config

@@ -12,6 +12,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(aruco_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(aruco_detect REQUIRED)
 set(THIS_PACKAGE_INCLUDE_DEPENDS
   aruco_msgs
 )
@@ -55,10 +56,9 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "srv/GetCloestAruco.srv" #! 刪掉不會用到的services
-  DEPENDENCIES aruco_msgs
- )
+# rosidl_generate_interfaces(${PROJECT_NAME}
+#   DEPENDENCIES aruco_msgs
+#  )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
