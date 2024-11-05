@@ -85,7 +85,7 @@ class ArucoDetector(Node):
             Marker, "closest_aruco", 10
         )
         # ------------------------------- start detect ------------------------------- #
-        timer_period = 0.1  # seconds
+        timer_period = 0.01  # seconds
         self.create_timer(timer_period, self.run)
         self.create_timer(timer_period, self.get_closest_aruco_callback)
 
