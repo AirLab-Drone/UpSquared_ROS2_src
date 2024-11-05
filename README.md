@@ -63,7 +63,8 @@ wget https://raw.githubusercontent.com/mavlink/mavros/master/mavros/scripts/inst
 chmod a+x install_geographiclib_datasets.sh
 ./install_geographiclib_datasets.sh
 ```
-
+### GPIO
+```sudo -H pip3 install python-periphery```
 
 
 
