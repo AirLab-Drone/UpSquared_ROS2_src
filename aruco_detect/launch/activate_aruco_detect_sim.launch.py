@@ -17,7 +17,7 @@ def generate_launch_description():
 
     show_image = DeclareLaunchArgument(
         "show_image",
-        default_value="False",  # 預設值必須是字串
+        default_value="True",  # 預設值必須是字串
         description="Enable camera image display",
     )
     # yaml檔案的路徑

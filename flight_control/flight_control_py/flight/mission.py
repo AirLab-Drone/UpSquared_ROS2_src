@@ -5,7 +5,7 @@ from flight_control_py.tool.PID import PID
 from flight_control_py.tool.get_yaml_config import get_yaml_config
 from flight_control_py.flight.base_control import BaseControl as FlightControl
 from flight_control_py.flight.flight_controller_info import FlightInfo
-from flight_control_py.aruco_visual.aruco import Aruco
+from aruco_detect_py.aruco import Aruco
 from aruco_msgs.msg import Marker
 import time
 import yaml
@@ -50,9 +50,10 @@ class Mission:
             10,
         )
         # ------------------------------ service client ------------------------------ #
-        # self.fire_extinguisher_spry_client = self.node.create_client(Spry, "/spry")
-        # while not self.fire_extinguisher_spry_client.wait_for_service(timeout_sec=1.0):
-        #     self.node.get_logger().info("service not available, waiting again...")
+        if not self.node.get_parameter("simulation").get_parameter_value().bool_value:
+            self.fire_extinguisher_spry_client = self.node.create_client(Spry, "/spry")
+            while not self.fire_extinguisher_spry_client.wait_for_service(timeout_sec=1.0):
+                self.node.get_logger().info("service not available, waiting again...")
         # ---------------------------- aruco marker config --------------------------- #
         self.markers_config = get_yaml_config("aruco_detect", "aruco_markers.yaml")[
             "aruco_markers"
@@ -80,7 +81,9 @@ class Mission:
             self.LANDING_MODE,
             self.LANDING_ON_PLATFORM_MODE,
             self.NAVIGATION_MODE,
+            self.FIRE_DISTINGUISH_MODE
         ]:
+            self.node.get_logger().error("not a valid mode")
             return False
         self.mode = mode
 
@@ -91,12 +94,29 @@ class Mission:
     # ---------------------------------------------------------------------------- #
     #                                    Mission                                   #
     # ---------------------------------------------------------------------------- #
+    # def templateMission(self):
+    #     # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+    #     if self.mode != self.WAIT_MODE:
+    #         self.stopMission()
+    #         return False
+    #     self.__setMode(self.TEMPLATE_MODE)
+    #     # --------------------------------- variable --------------------------------- #
+    #     # ----------------------------------- 開始任務 ----------------------------------- #
+    #     if self.mode != self.TEMPLATE_MODE:
+    #         self.node.get_logger().info("It's not in template mode")
+    #         self.stopMission()
+    #         return False
+    #     # ----------------------------------- 結束任務 ----------------------------------- #
+    #     self.stopMission()
+    #     return True
+
     def simpleTakeoff(self, target_hight=2):
         count = 0
         while not self.controller.armAndTakeoff(alt=target_hight):
             print("armAndTakeoff fail")
             count += 1
             if count > 5:
+                self.stopMission()
                 return False
         # print('takeoff success')
         # while abs(self.flight_info.rangefinder_alt - target_hight) > 0.5:
@@ -104,6 +124,7 @@ class Mission:
         #     print(f"hight offset: {self.flight_info.rangefinder_alt - target_hight}")
         time.sleep(7)
         self.mode = self.WAIT_MODE
+        self.stopMission()
         return True
 
     def simpleLanding(self):
@@ -112,7 +133,7 @@ class Mission:
         while self.flight_info.state.armed:
             # print(f"landing high:{self.flight_info.rangefinder_alt}")
             pass
-        self.mode = self.WAIT_MODE
+        self.stopMission()
         return True
 
     def landedOnPlatform(self):
@@ -130,6 +151,7 @@ class Mission:
         """
         # 檢查先前模式是否為等待模式，定且設定目前模式為降落至平台模式
         if self.mode != self.WAIT_MODE:
+            self.stopMission()
             return False
         self.__setMode(self.LANDING_ON_PLATFORM_MODE)
         # --------------------------------- variable --------------------------------- #
@@ -156,7 +178,7 @@ class Mission:
             # 設定中斷點，如果不是降落模式就直接結束
             # todo 檢查thread結束後是否會釋放記憶體
             if self.mode != self.LANDING_ON_PLATFORM_MODE:
-                self.controller.setZeroVelocity()
+                self.stopMission()
                 return False
             # get downward aruco coordinate
             closest_aruco = self.closest_aruco
@@ -252,10 +274,10 @@ class Mission:
             self.controller.sendPositionTargetVelocity(move_x, move_y, move_z, move_yaw)
         self.controller.setZeroVelocity()
         print("now I want to land=================================")
-        while not self.controller.land():
+        while not self.simpleLanding():
             print("landing")
         # ----------------------------------- 結束任務 ----------------------------------- #
-        self.mode = self.WAIT_MODE
+        self.stopMission()
         return True
 
     def navigateTo(
@@ -280,6 +302,7 @@ class Mission:
         """
         # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
         if self.mode != self.WAIT_MODE:
+            self.stopMission()
             return False
         self.__setMode(self.NAVIGATION_MODE)
         # --------------------------------- variable --------------------------------- #
@@ -308,7 +331,7 @@ class Mission:
         ):
             # 設定中斷點，如果不是前往火源模式就直接結束
             if self.mode != self.NAVIGATION_MODE:
-                self.controller.setZeroVelocity()
+                self.stopMission()
                 return False
             # 取的目前位置與目標位置的差距
             x_diff = destination_x - self.flight_info.uwb_coordinate.x
@@ -339,13 +362,13 @@ class Mission:
             else:
                 self.controller.sendPositionTargetVelocity(0, 0, move_z, move_yaw)
         # ----------------------------------- 結束任務 ----------------------------------- #
-        self.controller.setZeroVelocity()
-        self.mode = self.WAIT_MODE
+        self.stopMission()
         return True
 
     def fireDistinguish(self):
         # 檢查先前模式是否為等待模式，定且設定目前模式為降落至平台模式
         if self.mode != self.WAIT_MODE:
+            self.stopMission()
             return False
         self.__setMode(self.FIRE_DISTINGUISH_MODE)
         # --------------------------------- variable --------------------------------- #
@@ -358,7 +381,7 @@ class Mission:
         while True:
             # 設定中斷點，如果不是前往火源模式就直接結束
             if self.mode != self.FIRE_DISTINGUISH_MODE:
-                self.controller.setZeroVelocity()
+                self.stopMission()
                 return False
             # ----------------------------------- 檢查狀態 ----------------------------------- #
             # 如果時間超過TIMEOUT_TIME就停止
@@ -366,7 +389,7 @@ class Mission:
                 seconds=TIMEOUT_TIME
             ):
                 self.node.get_logger().info("fire distinguish time out")
-                self.controller.setZeroVelocity()
+                self.stopMission()
                 return False
             # 如果溫度低於60度就停止
             if self.hot_spot.temperature < 40:
@@ -404,14 +427,15 @@ class Mission:
         # ----------------------------------- 噴灑滅火 ----------------------------------- #
         self.controller.setZeroVelocity()
         self.node.get_logger().info("fire distinguish")
-        spry_future = self.fire_extinguisher_spry_client.call_async(Spry.Request())
-        self.node.executor.spin_until_future_complete(spry_future, timeout_sec=4)
-        if spry_future.result() is None:
-            is_success = False
-        else:
-            is_success = spry_future.result().success
+        if not self.node.get_parameter("simulation").get_parameter_value().bool_value:
+            self.node.get_logger().info("fire distinguish-----------------------------------------------")
+            spry_future = self.fire_extinguisher_spry_client.call_async(Spry.Request())
+            self.node.executor.spin_until_future_complete(spry_future, timeout_sec=4)
+            if spry_future.result() is None:
+                is_success = False
+            else:
+                is_success = spry_future.result().success
         self.node.get_logger().info(f"fire distinguish result: {is_success}")
         # ----------------------------------- 結束任務 ----------------------------------- #
-        self.controller.setZeroVelocity()
-        self.mode = self.WAIT_MODE
+        self.stopMission()
         return is_success
