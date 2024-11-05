@@ -351,9 +351,23 @@ class Mission:
         # --------------------------------- variable --------------------------------- #
         MAX_SPEED = 0.3  # 速度 單位:公尺/秒
         MAX_YAW = 15 * 3.14 / 180  # 15度/s
+        TIMEOUT_TIME = 15  # 滅火超時時間
+        START_TIME = rclpy.clock.Clock().now()
         is_success = True
         # ----------------------------------- 滅火任務 ----------------------------------- #
         while True:
+            # 設定中斷點，如果不是前往火源模式就直接結束
+            if self.mode != self.FIRE_DISTINGUISH_MODE:
+                self.controller.setZeroVelocity()
+                return False
+            # ----------------------------------- 檢查狀態 ----------------------------------- #
+            # 如果時間超過TIMEOUT_TIME就停止
+            if rclpy.clock.Clock().now() - START_TIME > rclpy.time.Duration(
+                seconds=TIMEOUT_TIME
+            ):
+                self.node.get_logger().info("fire distinguish time out")
+                self.controller.setZeroVelocity()
+                return False
             # 如果溫度低於60度就停止
             if self.hot_spot.temperature < 40:
                 self.node.get_logger().info(
@@ -390,12 +404,12 @@ class Mission:
         # ----------------------------------- 噴灑滅火 ----------------------------------- #
         self.controller.setZeroVelocity()
         self.node.get_logger().info("fire distinguish")
-        # spry_future = self.fire_extinguisher_spry_client.call_async(Spry.Request())
-        # self.node.executor.spin_until_future_complete(spry_future, timeout_sec=4)
-        # if spry_future.result() is None:
-        #     is_success = False
-        # else:
-        #     is_success = spry_future.result().success
+        spry_future = self.fire_extinguisher_spry_client.call_async(Spry.Request())
+        self.node.executor.spin_until_future_complete(spry_future, timeout_sec=4)
+        if spry_future.result() is None:
+            is_success = False
+        else:
+            is_success = spry_future.result().success
         self.node.get_logger().info(f"fire distinguish result: {is_success}")
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.controller.setZeroVelocity()
