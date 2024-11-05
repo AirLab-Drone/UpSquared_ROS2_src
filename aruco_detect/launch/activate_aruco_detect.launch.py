@@ -53,6 +53,7 @@ def generate_launch_description():
                     {"simulation": False},
                     {"aruco_marker_config_file": aruco_markers_file},
                     {"camera_config_file": camera_config_file},
+                    {"show_image": LaunchConfiguration("show_image")},  # 將show_image傳入節點參數
                 ],
             ),
         ]
