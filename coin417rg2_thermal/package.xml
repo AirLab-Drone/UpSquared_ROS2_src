@@ -13,10 +13,6 @@
   
   <depend>rclcpp</depend>
   <depend>rclpy</depend>
-
-
-  <depend>rclcpp</depend>
-  <depend>rclpy</depend>
   <depend>thermal_msgs</depend>
   
   <exec_depend>rosidl_default_runtime</exec_depend>
