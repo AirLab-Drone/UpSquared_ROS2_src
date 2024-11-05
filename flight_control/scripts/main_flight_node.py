@@ -100,10 +100,10 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        # if not self.mission.simpleTakeoff(target_hight=1):
-        #     self.get_logger().info("takeoff fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
+        if not self.mission.simpleTakeoff(target_hight=1):
+            self.get_logger().info("takeoff fail")
+            self.flow_mode = self.STOP_FLOW
+            return
         self.get_logger().info("land to platform")
         self.controller.setMode()
         time.sleep(4)
@@ -115,29 +115,37 @@ class MainFlightNode(Node):
         滅火流程
         起飛 --> 飛到指定位置 --> 飛回原點 --> 降落
         """
-        if not self.mission.simpleTakeoff():
-            self.get_logger().info("takeoff fail")
-            self.flow_mode = self.STOP_FLOW
-            return
+        # self.get_logger().info('start takeoff')
+        # if not self.mission.simpleTakeoff():
+        #     self.get_logger().info("takeoff fail")
+        #     self.flow_mode = self.STOP_FLOW
+        #     return
+        # time.sleep(3)
         # if not self.mission.navigateTo(
         #     self.thermal_alert_msg.x, self.thermal_alert_msg.y, 0, 0
         # ):
         #     self.get_logger().info("navigateTo fail")
         #     self.flow_mode = self.STOP_FLOW
         #     return
-        # set target position
+        self.get_logger().info('start navigateTo')
         if not self.mission.navigateTo(1, 2, 2):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
         # wait for 3 seconds
+        self.get_logger().info('fight fire')
         time.sleep(3)
         # set home position
-        if not self.mission.navigateTo(10.974939259516479, -9.05861482263504, 2):
+        self.get_logger().info('start go home')
+        if not self.mission.navigateTo(0, 0, 2):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
-        self.mission.landedOnPlatform()
+        self.get_logger().info('start land on platform')
+        if not self.mission.landedOnPlatform():
+            self.get_logger().info("land fail")
+            self.flow_mode = self.STOP_FLOW
+            return
         self.flow_mode = self.STOP_FLOW
 
 

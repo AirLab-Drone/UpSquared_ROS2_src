@@ -2,6 +2,7 @@
 
 
 ### 相機權限 (RGB and thermal camera)
+開機執行  
 1. 編輯 rc.local 文件（如果沒有，則創建一個）：
 ```
 sudo nano /etc/rc.local
@@ -17,6 +18,29 @@ exit 0
 3. 確保 rc.local 文件具有可執行權限：
 ```
 sudo chmod +x /etc/rc.local
+```
+
+重新差拔  
+1. 創建規則文件
+使用以下命令創建新的 udev 規則文件：
+```
+sudo nano /etc/udev/rules.d/99-video-devices.rules
+```
+2. 添加規則內容
+在文件中添加以下內容，設置 /dev/video* 設備的讀寫權限：
+```
+KERNEL=="video[0-9]*", MODE="0666"
+```
+3. 保存並退出
+在 nano 編輯器中：
+
+按 Ctrl + O 以保存文件。
+按 Ctrl + X 以退出編輯器。
+4. 重新加載並觸發 udev 規則
+添加規則後，使用以下命令重新加載 udev 規則並使其生效：
+```
+sudo udevadm control --reload-rules
+sudo udevadm trigger
 ```
 
 ------ 
