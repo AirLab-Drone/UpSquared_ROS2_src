@@ -38,6 +38,7 @@ class ArucoDetector(Node):
         self.declare_parameter("simulation", False)
         self.declare_parameter("aruco_marker_config_file", "")
         self.declare_parameter("camera_config_file", "")
+        self.declare_parameter("show_image", False)
         # ------------------------------ class variable ------------------------------ #
         # cv2 setup
         self.frame = None
@@ -55,13 +56,17 @@ class ArucoDetector(Node):
         with open(camera_config_path, "r") as f:
             config = yaml.safe_load(f)
             # camera offset
-            self.rotate_deg = config['camera_offset']['yaw']
-            self.offset_x = config['camera_offset']['x']
-            self.offset_y = config['camera_offset']['y']
+            self.rotate_deg = config["camera_offset"]["yaw"]
+            self.offset_x = config["camera_offset"]["x"]
+            self.offset_y = config["camera_offset"]["y"]
             # camera matrix
             self.camera_parameter = {}
-            self.camera_parameter['matrix'] = np.array(config['camera_parameter']['camera_matrix'])
-            self.camera_parameter['distortion'] = np.array(config['camera_parameter']['distortion_coefficients'])
+            self.camera_parameter["matrix"] = np.array(
+                config["camera_parameter"]["camera_matrix"]
+            )
+            self.camera_parameter["distortion"] = np.array(
+                config["camera_parameter"]["distortion_coefficients"]
+            )
         # aruco setup
         self.arucoList = []
         aruco_marker_config_file_path = (
@@ -131,7 +136,10 @@ class ArucoDetector(Node):
             marker_array_temp.header.stamp = rclpy.clock.Clock().now().to_msg()
             self.aruco_publisher.publish(marker_array_temp)
             # -----------------show image-----------------
-            if self.frame is not None:
+            if (
+                self.frame is not None
+                and self.get_parameter("show_image").get_parameter_value().bool_value
+            ):
                 cv2.imshow("frame", self.frame)
                 cv2.waitKey(1)
 
@@ -182,7 +190,7 @@ class ArucoDetector(Node):
             )
             self.closest_aruco_publisher.publish(marker)
         self.get_logger().info(
-            f"id: {marker.id} x: {marker.x:.2f}, y: {marker.y:.2f}, z: {marker.z:.2f}, yaw: {marker.yaw:.2f}, pitch: {marker.pitch:.2f}, roll: {marker.roll:.2f}"
+            f"\rid: {marker.id} x: {marker.x:.2f}, y: {marker.y:.2f}, z: {marker.z:.2f}, yaw: {marker.yaw:.2f}, pitch: {marker.pitch:.2f}, roll: {marker.roll:.2f}"
         )
 
     def rotateAndOffsetArucoCoordinate(
@@ -213,7 +221,9 @@ class ArucoDetector(Node):
         if str(marker_id) not in self.markers_config:
             return False
         aruco = Aruco(
-            marker_id=marker_id, marker_config=self.markers_config[f"{marker_id}"], camera_parameter=self.camera_parameter
+            marker_id=marker_id,
+            marker_config=self.markers_config[f"{marker_id}"],
+            camera_parameter=self.camera_parameter,
         )
         aruco.update(marker_id, corner)
         self.arucoList.append(aruco)
