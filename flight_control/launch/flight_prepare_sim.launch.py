@@ -61,28 +61,6 @@ def generate_launch_description():
                 ],
                 output="screen",
             ),
-            # TimerAction(
-            #     period=10.0,
-            #     actions=[
-            #         ExecuteProcess(
-            #             cmd=[
-            #                 "sim_vehicle.py",
-            #                 "-v",
-            #                 "ArduCopter",
-            #                 "-f",
-            #                 "gazebo-iris",
-            #                 "--model",
-            #                 "JSON",
-            #                 "--out",
-            #                 "127.0.0.1:14551",
-            #                 "--map",
-            #                 "--console",
-            #                 "--mavproxy-args=--streamrate=-1",
-            #             ],
-            #             output="screen",
-            #         )
-            #     ],
-            # ),
             ExecuteProcess(
                 cmd=[
                     "sim_vehicle.py",
@@ -99,6 +77,18 @@ def generate_launch_description():
                     "--mavproxy-args=--streamrate=-1",
                 ],
                 output="screen",
+            ),
+            Node(
+                package="ros_gz_bridge",
+                executable="parameter_bridge",
+                output="screen",
+                arguments=[f"/lidar1@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan"],
+            ),
+            Node(
+                package="ros_gz_bridge",
+                executable="parameter_bridge",
+                output="screen",
+                arguments=[f"/lidar2@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan"],
             ),
             changeMavrosPublishRate(24),
             changeMavrosPublishRate(33),

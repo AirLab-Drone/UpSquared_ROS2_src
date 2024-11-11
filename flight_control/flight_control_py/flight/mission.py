@@ -26,7 +26,14 @@ class Mission:
     LANDING_ON_PLATFORM_MODE = 2
     NAVIGATION_MODE = 3
     FIRE_DISTINGUISH_MODE = 4
+    # define control parameter
+    LIMIT_SEALING_RANGE = 0.8 # 距離天花板的最小距離
+    LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
+    MAX_SPEED = 0.3  # 速度 單位:公尺/秒
+    MAX_DOWN_SPEED = 0.15  # 速度 單位:公尺/秒
+    MAX_YAW = 15 * 3.14 / 180  # 15度/s
 
+    # initial mode
     mode = WAIT_MODE
 
     def __init__(
@@ -111,18 +118,38 @@ class Mission:
     #     return True
 
     def simpleTakeoff(self, target_hight=2):
+        LIMIT_SEALING_RANGE = self.LIMIT_SEALING_RANGE
+        LOWEST_HEIGHT = self.LOWEST_HEIGHT
         count = 0
+        self.node.get_logger().info(f"target_hight: {target_hight}")
+        # 檢查先前模式是否為等待模式，定且設定目前模式為起飛模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        pre_range_sealing = self.flight_info.rangefinder2_range -target_hight # 預估起飛後離天花板的高度
+        # 如果離天花板太近，就將目標高度設定為離天花板的最小距離
+        if pre_range_sealing < LIMIT_SEALING_RANGE:
+            target_hight = self.flight_info.rangefinder2_range - LIMIT_SEALING_RANGE
+        # 如果離地面太近，禁止起飛
+        self.node.get_logger().info(f"target_hight: {target_hight}")
+        if target_hight < LOWEST_HEIGHT:
+            self.node.get_logger().error("too low to takeoff")
+            self.stopMission()
+            return False
         while not self.controller.armAndTakeoff(alt=target_hight):
             print("armAndTakeoff fail")
             count += 1
             if count > 5:
                 self.stopMission()
                 return False
-        # print('takeoff success')
-        # while abs(self.flight_info.rangefinder_alt - target_hight) > 0.5:
-        #     print(f'rangefinder alt: {self.flight_info.rangefinder_alt} target_hight: {target_hight}')
-        #     print(f"hight offset: {self.flight_info.rangefinder_alt - target_hight}")
-        time.sleep(7)
+        start_time = rclpy.clock.Clock().now()
+        while abs(self.flight_info.rangefinder_alt - target_hight) > 0.5:
+            print(f'rangefinder alt: {self.flight_info.rangefinder_alt} target_hight: {target_hight}')
+            print(f"hight offset: {self.flight_info.rangefinder_alt - target_hight}")
+            if rclpy.clock.Clock().now() - start_time > rclpy.time.Duration(seconds=7):
+                self.stopMission()
+                self.node.get_logger().error("takeoff time out")
+                return False
         self.mode = self.WAIT_MODE
         self.stopMission()
         return True
@@ -155,11 +182,11 @@ class Mission:
             return False
         self.__setMode(self.LANDING_ON_PLATFORM_MODE)
         # --------------------------------- variable --------------------------------- #
-        LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
-        MAX_SPEED = 0.3  # 速度 單位:公尺/秒
-        MAX_DOWN_SPEED = 0.15  # 速度 單位:公尺/秒
-        MAX_YAW = 15 * 3.14 / 180  # 15度/s
-        DOWNWARD_SPEED = -0.2  # the distance to move down,必需要為負
+        LIMIT_SEALING_RANGE = self.LIMIT_SEALING_RANGE
+        LOWEST_HEIGHT = self.LOWEST_HEIGHT
+        MAX_SPEED = self.MAX_SPEED
+        MAX_DOWN_SPEED = self.MAX_DOWN_SPEED
+        MAX_YAW = self.MAX_YAW
         last_moveup_time = rclpy.clock.Clock().now()
         last_not_in_range_time = rclpy.clock.Clock().now()
 
@@ -190,7 +217,7 @@ class Mission:
                         # todo 若看不到aruco水平飛到UWB home position
                         # print('move up')
                         self.controller.sendPositionTargetVelocity(
-                            0, 0, -DOWNWARD_SPEED, 0
+                            0, 0, MAX_DOWN_SPEED, 0
                         )
                         last_moveup_time = rclpy.clock.Clock().now()
                         pid_move_x, pid_move_y, pid_move_yaw, pid_move_z = init_pid()
@@ -212,7 +239,7 @@ class Mission:
                     if self.flight_info.rangefinder_alt < 3:
                         # print('mo = pid_move_y.PID(-marker_x, current_time)ve up')
                         self.controller.sendPositionTargetVelocity(
-                            0, 0, -DOWNWARD_SPEED, 0
+                            0, 0, MAX_DOWN_SPEED, 0
                         )
                         last_moveup_time = rclpy.clock.Clock().now()
                         pid_move_x, pid_move_y, pid_move_yaw, pid_move_z = init_pid()
@@ -259,7 +286,7 @@ class Mission:
             ):
                 if (
                     rclpy.clock.Clock().now() - last_not_in_range_time
-                    > rclpy.time.Duration(seconds=1)
+                    > rclpy.time.Duration(seconds=3)
                 ):
                     self.controller.setZeroVelocity()
                     print(f"landing high:{marker_z}")
@@ -306,8 +333,11 @@ class Mission:
             return False
         self.__setMode(self.NAVIGATION_MODE)
         # --------------------------------- variable --------------------------------- #
-        MAX_SPEED = 0.3
-        MAX_YAW = 30 * 3.14 / 180
+        LIMIT_SEALING_RANGE = self.LIMIT_SEALING_RANGE
+        LOWEST_HEIGHT = self.LOWEST_HEIGHT
+        MAX_SPEED = self.MAX_SPEED
+        MAX_YAW = self.MAX_YAW
+        MAX_DOWN_SPEED = self.MAX_DOWN_SPEED
         bcn_orient_yaw = (
             self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
         )
@@ -372,8 +402,11 @@ class Mission:
             return False
         self.__setMode(self.FIRE_DISTINGUISH_MODE)
         # --------------------------------- variable --------------------------------- #
-        MAX_SPEED = 0.3  # 速度 單位:公尺/秒
-        MAX_YAW = 15 * 3.14 / 180  # 15度/s
+        LIMIT_SEALING_RANGE = self.LIMIT_SEALING_RANGE
+        LOWEST_HEIGHT = self.LOWEST_HEIGHT
+        MAX_SPEED = self.MAX_SPEED
+        MAX_YAW = self.MAX_YAW
+        MAX_DOWN_SPEED = self.MAX_DOWN_SPEED
         TIMEOUT_TIME = 15  # 滅火超時時間
         START_TIME = rclpy.clock.Clock().now()
         is_success = True
@@ -435,6 +468,9 @@ class Mission:
                 is_success = False
             else:
                 is_success = spry_future.result().success
+        else:
+            time.sleep(2)
+            is_success = True
         self.node.get_logger().info(f"fire distinguish result: {is_success}")
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()

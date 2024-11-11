@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Range, NavSatFix
+from sensor_msgs.msg import Range, NavSatFix, LaserScan
 from mavros_msgs.msg import GPSRAW, State
 from std_msgs.msg import Header, Float64
 from rclpy.parameter import Parameter
@@ -32,12 +32,20 @@ class FlightInfo:
         if not rclpy.ok():
             rclpy.init()
         self.node = node
-        self.node.create_subscription(
-            Range,
-            "/mavros/rangefinder_pub",
-            self.rangefinderCallback,
-            rclpy.qos.qos_profile_sensor_data,
-        )
+        if self.node.get_parameter("simulation").get_parameter_value().bool_value:
+            self.node.create_subscription(
+                LaserScan,
+                "/lidar1",
+                self.rangefinderCallback,
+                rclpy.qos.qos_profile_sensor_data,
+            )
+        else:
+            self.node.create_subscription(
+                Range,
+                "/mavros/rangefinder_pub",
+                self.rangefinderCallback,
+                rclpy.qos.qos_profile_sensor_data,
+            )
         self.node.create_subscription(
             GPSRAW,
             "/mavros/gpsstatus/gps1/raw",
@@ -62,17 +70,30 @@ class FlightInfo:
             self.stateCallback,
             rclpy.qos.qos_profile_sensor_data,
         )
+        if self.node.get_parameter("simulation").get_parameter_value().bool_value:
+            self.node.create_subscription(
+                LaserScan,
+                "/lidar2",
+                self.rangefinder2Callback,
+                rclpy.qos.qos_profile_sensor_data,
+            )
+        else:
+            pass
         # ------------------------------ set init value ------------------------------ #
         self.rangefinder_alt = 0
         self.uwb_coordinate = XYZ()
         self.compass_heading = 0
         self.state = State()
+        self.rangefinder2_range = 0
 
     def rangefinderCallback(self, msg):
         """
         Callback function for the rangefinder subscription.
         """
-        self.rangefinder_alt = msg.range
+        if self.node.get_parameter("simulation").get_parameter_value().bool_value:
+            self.rangefinder_alt = msg.ranges[0]
+        else:
+            self.rangefinder_alt = msg.range
         self.node.get_logger().debug(f"rangefinder alt: {self.rangefinder_alt}")
 
     def coordinateCallback(self, msg):
@@ -118,6 +139,16 @@ class FlightInfo:
         """
         self.state = msg
         self.node.get_logger().debug(f"state: {self.state}")
+    
+    def rangefinder2Callback(self, msg):
+        """
+        Callback function for the rangefinder subscription.
+        """
+        if self.node.get_parameter("simulation").get_parameter_value().bool_value:
+            self.rangefinder2_range = msg.ranges[0]
+        else:
+            self.rangefinder2_range = msg.range
+        self.node.get_logger().debug(f"rangefinder2 range: {self.rangefinder2_range}")
 
     def destroy(self):
         """
