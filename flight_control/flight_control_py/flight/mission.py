@@ -435,6 +435,7 @@ class Mission:
                 is_success = False
             else:
                 is_success = spry_future.result().success
+        time.sleep(8)
         self.node.get_logger().info(f"fire distinguish result: {is_success}")
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
