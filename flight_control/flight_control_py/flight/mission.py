@@ -30,7 +30,7 @@ class Mission:
     LIMIT_SEALING_RANGE = 0.8  # 距離天花板的最小距離
     LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
     HIGHEST_HEIGHT = 3.0  # 最高高度 單位:公尺
-    MAX_SPEED = 0.3  # 速度 單位:公尺/秒
+    MAX_SPEED = 0.5  # 速度 單位:公尺/秒
     MAX_VERTICAL_SPEED = 0.15  # 速度 單位:公尺/秒
     MAX_YAW = 15 * 3.14 / 180  # 15度/s
 
@@ -203,7 +203,7 @@ class Mission:
             # pid_move_x = PID(0.5, 0.01, 0.005, current_time)  # 修改後的 PID 參數
             # pid_move_y = PID(0.5, 0.01, 0.005, current_time)  # 修改後的 PID 參數
             # pid_move_z = PID(0.3, 0.01, 0.005, current_time, LOWEST_HEIGHT)  # 修改後的 PID 參數
-            # pid_move_yaw = PID(0.5, 0.01, 0.005, current_time) 
+            # pid_move_yaw = PID(0.5, 0.01, 0.005, current_time)
             pid_move_x = PID(0.6, 0.0006, 0.00083, current_time)
             pid_move_y = PID(0.6, 0.0006, 0.00083, current_time)
             pid_move_z = PID(0.4, 0.0006, 0.00083, current_time, LOWEST_HEIGHT)
@@ -364,12 +364,15 @@ class Mission:
             vertical_space = up_distance + down_distance
             if vertical_space < LIMIT_SEALING_RANGE + LOWEST_HEIGHT:
                 return 0
-            if vertical_space < destination_z+LIMIT_SEALING_RANGE:
-                target_high = (vertical_space - LIMIT_SEALING_RANGE-LOWEST_HEIGHT) / 2 + LOWEST_HEIGHT
+            if vertical_space < destination_z + LIMIT_SEALING_RANGE:
+                target_high = (
+                    vertical_space - LIMIT_SEALING_RANGE - LOWEST_HEIGHT
+                ) / 2 + LOWEST_HEIGHT
                 return target_high - current_high
             if vertical_space > destination_z + LIMIT_SEALING_RANGE:
                 return destination_z - current_high
             return 0
+
         # ------------------------------- start mission ------------------------------ #
         # 等待取得uwb座標
         while (
@@ -389,7 +392,10 @@ class Mission:
                 self.stopMission()
                 return False
             # 高度空間不足就停止
-            if self.flight_info.rangefinder_alt + self.flight_info.rangefinder2_range < LIMIT_SEALING_RANGE + LOWEST_HEIGHT:
+            if (
+                self.flight_info.rangefinder_alt + self.flight_info.rangefinder2_range
+                < LIMIT_SEALING_RANGE + LOWEST_HEIGHT
+            ):
                 self.stopMission()
                 self.node.get_logger().error("not enough space to navigate")
                 return False
@@ -438,9 +444,54 @@ class Mission:
         MAX_YAW = self.MAX_YAW
         MAX_VERTICAL_SPEED = self.MAX_VERTICAL_SPEED
         TIMEOUT_TIME = 15  # 滅火超時時間
-        START_TIME = rclpy.clock.Clock().now()
+        HOT_SPOT_THRESHOLD = 40  # 熱點溫度閾值
         is_success = True
+        # ----------------------------------- 尋找火源 ----------------------------------- #
+        # 向前一公尺
+        target_distance = 0.32
+        current_distance = 0.0
+        start_time = rclpy.clock.Clock().now()
+        self.node.get_logger().info("start go forward")
+        while current_distance < target_distance:
+            if self.mode != self.FIRE_DISTINGUISH_MODE:
+                self.stopMission()
+                return False
+            if self.hot_spot.temperature >= HOT_SPOT_THRESHOLD:
+                self.node.get_logger().info("hot spot found")
+                break
+            self.controller.sendPositionTargetVelocity(MAX_SPEED, 0, 0, 0)
+            current_distance = (
+                MAX_SPEED * (rclpy.clock.Clock().now() - start_time).nanoseconds / 1e9
+            )
+        self.controller.setZeroVelocity()
+        # ----------------------------------- 螺旋尋找火源 ----------------------------------- #
+        omega = 0.5
+        k = 0.1  # 螺旋擴展速率
+        angle = 0
+        max_radius = 10.0
+        start_time = rclpy.clock.Clock().now()
+        self.node.get_logger().info("start spiral")
+        while True:
+            if self.mode != self.FIRE_DISTINGUISH_MODE:
+                self.stopMission()
+                return False
+            if self.hot_spot.temperature >= HOT_SPOT_THRESHOLD:
+                self.node.get_logger().info("hot spot found")
+                break
+            elapsed = (rclpy.clock.Clock().now() - start_time).nanoseconds / 1e9
+            angle = omega * elapsed
+            spiral_radius = k * angle
+            spiral_radius = min(spiral_radius, max_radius)
+            move_x = omega * spiral_radius * math.sin(angle)
+            move_y = omega * spiral_radius * math.cos(angle)
+            move_distance = math.sqrt(move_x**2 + move_y**2)
+            move_speed = min(move_distance, MAX_SPEED)
+            move_x = move_x / move_distance * move_speed
+            move_y = move_y / move_distance * move_speed
+            self.controller.sendPositionTargetVelocity(move_x, move_y, 0, 0)
+        self.controller.setZeroVelocity()
         # ----------------------------------- 滅火任務 ----------------------------------- #
+        FIRE_EXTINGUISH_START_TIME = rclpy.clock.Clock().now()
         while True:
             # 設定中斷點，如果不是前往火源模式就直接結束
             if self.mode != self.FIRE_DISTINGUISH_MODE:
@@ -448,14 +499,15 @@ class Mission:
                 return False
             # ----------------------------------- 檢查狀態 ----------------------------------- #
             # 如果時間超過TIMEOUT_TIME就停止
-            if rclpy.clock.Clock().now() - START_TIME > rclpy.time.Duration(
-                seconds=TIMEOUT_TIME
+            if (
+                rclpy.clock.Clock().now() - FIRE_EXTINGUISH_START_TIME
+                > rclpy.time.Duration(seconds=TIMEOUT_TIME)
             ):
                 self.node.get_logger().info("fire distinguish time out")
                 self.stopMission()
                 return False
             # 如果溫度低於60度就停止
-            if self.hot_spot.temperature < 40:
+            if self.hot_spot.temperature < HOT_SPOT_THRESHOLD:
                 self.node.get_logger().info(
                     f"temperature is lower than 60, {self.hot_spot.temperature}"
                 )
@@ -467,7 +519,7 @@ class Mission:
                 self.node.get_logger().info("hot spot update time out")
                 self.controller.setZeroVelocity()
                 continue
-            # 如果座標都是零就停止
+            # 如果座標都是零就不動
             if (
                 self.hot_spot.x == 0
                 and self.hot_spot.y == 0
@@ -503,6 +555,7 @@ class Mission:
         else:
             time.sleep(2)
             is_success = True
+        time.sleep(5)
         self.node.get_logger().info(f"fire distinguish result: {is_success}")
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
