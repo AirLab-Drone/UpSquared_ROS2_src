@@ -447,28 +447,11 @@ class Mission:
         HOT_SPOT_THRESHOLD = 40  # 熱點溫度閾值
         is_success = True
         # ----------------------------------- 尋找火源 ----------------------------------- #
-        # 向前一公尺
-        target_distance = 0.32
-        current_distance = 0.0
-        start_time = rclpy.clock.Clock().now()
-        self.node.get_logger().info("start go forward")
-        while current_distance < target_distance:
-            if self.mode != self.FIRE_DISTINGUISH_MODE:
-                self.stopMission()
-                return False
-            if self.hot_spot.temperature >= HOT_SPOT_THRESHOLD:
-                self.node.get_logger().info("hot spot found")
-                break
-            self.controller.sendPositionTargetVelocity(MAX_SPEED, 0, 0, 0)
-            current_distance = (
-                MAX_SPEED * (rclpy.clock.Clock().now() - start_time).nanoseconds / 1e9
-            )
-        self.controller.setZeroVelocity()
-        # ----------------------------------- 螺旋尋找火源 ----------------------------------- #
+        # 螺旋尋找火源
         omega = 0.5
         k = 0.1  # 螺旋擴展速率
         angle = 0
-        max_radius = 10.0
+        max_radius = 1.0
         start_time = rclpy.clock.Clock().now()
         self.node.get_logger().info("start spiral")
         while True:
@@ -481,6 +464,10 @@ class Mission:
             elapsed = (rclpy.clock.Clock().now() - start_time).nanoseconds / 1e9
             angle = omega * elapsed
             spiral_radius = k * angle
+            if spiral_radius > max_radius:
+                self.node.get_logger().info("hot spot not found")
+                self.stopMission()
+                return False
             spiral_radius = min(spiral_radius, max_radius)
             move_x = omega * spiral_radius * math.sin(angle)
             move_y = omega * spiral_radius * math.cos(angle)
@@ -506,7 +493,7 @@ class Mission:
                 self.node.get_logger().info("fire distinguish time out")
                 self.stopMission()
                 return False
-            # 如果溫度低於60度就停止
+            # 如果溫度低於閥值度就停止
             if self.hot_spot.temperature < HOT_SPOT_THRESHOLD:
                 self.node.get_logger().info(
                     f"temperature is lower than 60, {self.hot_spot.temperature}"
@@ -520,11 +507,7 @@ class Mission:
                 self.controller.setZeroVelocity()
                 continue
             # 如果座標都是零就不動
-            if (
-                self.hot_spot.x == 0
-                and self.hot_spot.y == 0
-                and self.hot_spot.temperature != 0
-            ):
+            if self.hot_spot.x == 0 and self.hot_spot.y == 0:
                 self.node.get_logger().info("hot spot is zero")
                 self.controller.setZeroVelocity()
                 continue

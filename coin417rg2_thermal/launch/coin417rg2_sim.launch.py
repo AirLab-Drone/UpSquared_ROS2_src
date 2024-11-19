@@ -25,6 +25,9 @@ def generate_launch_description():
                 package="coin417rg2_thermal",
                 executable="thermal_frame_to_drone_frame.py",
                 name="thermal_frame_to_drone_frame",
+                parameters=[
+                    {"simulation": True},
+                ],
             ),
         ]
     )

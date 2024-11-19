@@ -7,24 +7,21 @@ from ament_index_python.packages import get_package_share_directory
 import yaml
 import os
 import math
+from flight_control_py.flight.flight_controller_info import FlightInfo
 
 
 class ThermalFrameToDroneFrame(Node):
 
     def __init__(self):
         super().__init__("thermal_frame_to_drone_frame")
+        self.declare_parameter("simulation", False)
+        self.flight_info = FlightInfo(self)
         # -------------------------------- subscriptions -------------------------------- #
         self.subscription_thermal = self.create_subscription(
             ThermalAlert,
             "/coin417rg2_thermal/hot_spot",
             self.hot_spot_pose_callback,
             10,
-        )
-        self.subscription_range = self.create_subscription(
-            Range,
-            "/mavros/rangefinder_pub",
-            self.rangefinder_callback,
-            rclpy.qos.qos_profile_sensor_data,
         )
         # -------------------------------- publishers -------------------------------- #
         self.hot_spot_drone_frame_pub = self.create_publisher(
@@ -35,8 +32,6 @@ class ThermalFrameToDroneFrame(Node):
         self.x_pixel = 0
         self.y_pixel = 0
         self.temperature = 0.0
-        # rangefinder altitude
-        self.rangefinder_alt = 0.0
         # thermal camera parameters
         self.config = self.get_yaml_config("coin417rg2_thermal", "thermal_camera.yaml")
 
@@ -60,9 +55,6 @@ class ThermalFrameToDroneFrame(Node):
             f"hot spot drone frame: x: {hot_spot_drone_frame.x}, y: {hot_spot_drone_frame.y}, temperature: {hot_spot_drone_frame.temperature}"
         )
         self.hot_spot_drone_frame_pub.publish(hot_spot_drone_frame)
-
-    def rangefinder_callback(self, msg):
-        self.rangefinder_alt = msg.range
 
     def get_yaml_config(self, package_name, config_file_name):
         package_share_directory = get_package_share_directory(package_name)
@@ -90,7 +82,7 @@ class ThermalFrameToDroneFrame(Node):
         self.thermal_image_width = self.config["thermal_camera_params"]["width"]
         offset_z = self.config["thermal_camera_pose"]["z"]
         fov = math.radians(self.thermal_fov)
-        hight_ground_to_thermal = self.rangefinder_alt + offset_z
+        hight_ground_to_thermal = self.flight_info.rangefinder_alt + offset_z
         image_width_pixel = self.thermal_image_width
         meter_per_pixel = (
             2 * hight_ground_to_thermal * math.tan(fov / 2) / image_width_pixel
