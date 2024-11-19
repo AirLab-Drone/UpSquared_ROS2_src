@@ -33,9 +33,9 @@ class FireExtinguisher_JYModbus(Node):
             bytesize=8,  # 資料位
             timeout=3,  # 超時時間
         )
-        self.spry_pin = 0x0001
+        self.spry_pin = 0x0000
         self.hold_pin = 0x0002
-        self.check_read_pin = 0x0003
+        self.check_read_pin = 0x0000
         while not self.client.connect():
             self.get_logger().info("connecting...")
             time.sleep(0.5)
