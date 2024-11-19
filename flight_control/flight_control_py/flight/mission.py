@@ -448,10 +448,10 @@ class Mission:
         is_success = True
         # ----------------------------------- 尋找火源 ----------------------------------- #
         # 螺旋尋找火源
-        omega = 0.5
-        k = 0.1  # 螺旋擴展速率
+        omega = 2 * math.pi / 10  # 每十秒繞一圈的角速度
+        k = 0.3 / (2* math.pi)  # 螺旋擴展速率
         angle = 0
-        max_radius = 1.0
+        max_radius = 1.5  # 當半徑到1.5時停止飛行
         start_time = rclpy.clock.Clock().now()
         self.node.get_logger().info("start spiral")
         while True:
