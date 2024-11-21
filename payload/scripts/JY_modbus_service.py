@@ -27,14 +27,14 @@ class FireExtinguisher_JYModbus(Node):
         self.UNIT = 0x01
         self.client = ModbusClient(
             method="rtu",  # 通訊模式
-            port="/dev/ttyUSB4",  # 串口設備
+            port="/dev/ttyUSB0",  # 串口設備
             baudrate=9600,  # 波特率
             stopbits=2,  # 停止位
             bytesize=8,  # 資料位
             timeout=3,  # 超時時間
         )
         self.spry_pin = 0x0000
-        self.hold_pin = 0x0002
+        self.hold_pin = 0x0001
         self.check_read_pin = 0x0000
         while not self.client.connect():
             self.get_logger().info("connecting...")
@@ -52,7 +52,7 @@ class FireExtinguisher_JYModbus(Node):
             if result.isError():
                 response.success = False
         except Exception as e:
-            self.get_logger().info(f"error: {e}")
+            self.get_logger().error(f"error: {str(e)}")
             response.success = False
         self.get_logger().info(f"response: {response}")
         return response
@@ -61,25 +61,26 @@ class FireExtinguisher_JYModbus(Node):
         self.get_logger().info("HoldFireExtinguisher service is called")
         response.success = True
         try:
-            result = self.client.write_coil(self.hold_pin, request.hold, unit=self.UNIT)
+            result = self.client.write_coil(self.hold_pin, not request.hold, unit=self.UNIT)
             if result.isError():
                 response.success = False
         except Exception as e:
-            self.get_logger().info(f"error: {e}")
+            self.get_logger().error(f"error: {str(e)}")
             response.success = False
         return response
 
     def check_fire_extinguisher(self, request, response):
         self.get_logger().info("check_fire_extinguisher service is called")
         try:
-            result = self.client.read_coils(self.check_read_pin, 1, unit=self.UNIT)
+            result = self.client.read_discrete_inputs(self.check_read_pin, 1, unit=self.UNIT)
             if result.isError():
                 self.get_logger().error("ModbusIOException")
                 response.success = False
                 return response
-            response.success = not result.bits[0]
+            self.get_logger().info(str(result.bits))
+            response.success = result.bits[0]
         except Exception as e:
-            self.get_logger().info(f"error: {e}")
+            self.get_logger().error(f"error: {str(e)}")
             response.success = False
         return response
 
