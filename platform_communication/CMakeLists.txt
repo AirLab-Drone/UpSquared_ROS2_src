@@ -30,10 +30,15 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# rosidl_generate_interfaces(${PROJECT_NAME}
-#   src/service_name.srv
-#   DEPENDENCIES std_msgs
-# )
+rosidl_generate_interfaces(${PROJECT_NAME}
+  srv/AlignmentRod.srv
+  srv/MainsPower.srv
+  srv/MovetoChargeTank.srv
+  srv/MovetoExtinguisher.srv
+  srv/PerforatedPlate.srv
+  srv/VerticalSlider.srv
+  DEPENDENCIES std_msgs
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
