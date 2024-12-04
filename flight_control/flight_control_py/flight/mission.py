@@ -30,7 +30,7 @@ class Mission:
     LIMIT_SEALING_RANGE = 0.8  # 距離天花板的最小距離
     LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
     HIGHEST_HEIGHT = 3.0  # 最高高度 單位:公尺
-    MAX_SPEED = 0.5  # 速度 單位:公尺/秒
+    MAX_SPEED = 0.3  # 速度 單位:公尺/秒
     MAX_VERTICAL_SPEED = 0.15  # 速度 單位:公尺/秒
     MAX_YAW = 15 * 3.14 / 180  # 15度/s
 
