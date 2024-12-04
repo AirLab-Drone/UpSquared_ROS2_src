@@ -355,10 +355,11 @@ class Mission:
 
         # --------------------------------- function --------------------------------- #
         # 如果距離範圍在threshold內就回傳True    self.spry_pin = gpio.GPIOPin(14, gpio.OUT)
-        def around(a, b, threshold=0.2):
+        def around(a, b, threshold=0.1):
             return abs(a - b) < threshold
 
         def diffZCompute(current_high):
+            # 計算須移動的高度
             up_distance = self.flight_info.rangefinder2_range
             down_distance = self.flight_info.rangefinder_alt
             vertical_space = up_distance + down_distance
@@ -449,9 +450,9 @@ class Mission:
         # ----------------------------------- 尋找火源 ----------------------------------- #
         # 螺旋尋找火源
         omega = 2 * math.pi / 10  # 每十秒繞一圈的角速度
-        k = 0.3 / (2* math.pi)  # 螺旋擴展速率
+        k = 0.3 / (2* math.pi)  # 螺旋擴展速率，每秒擴展0.3m
         angle = 0
-        max_radius = 1.5  # 當半徑到1.5時停止飛行
+        max_radius = 1.0  # 當半徑到1.5時停止飛行
         start_time = rclpy.clock.Clock().now()
         self.node.get_logger().info("start spiral")
         while True:
