@@ -31,12 +31,12 @@ class MainFlightNode(Node):
         self.flight_info = FlightInfo(self)
         self.mission = Mission(self.controller, self.flight_info, self)
         # 接收火源警報
-        # self.create_subscription(
-        #     ThermalAlert,
-        #     "/thermal_alert",
-        #     self.thermalAlertCallback,
-        #     rclpy.qos.qos_profile_sensor_data,
-        # )
+        self.create_subscription(
+            ThermalAlert,
+            "/thermal_alert",
+            self.thermalAlertCallback,
+            rclpy.qos.qos_profile_sensor_data,
+        )
 
         # --------------------------------- 控制飛行流程偵測器 -------------------------------- #
         self.flow_thread = threading.Thread()  # 建立空執行緒
@@ -100,14 +100,25 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        if not self.mission.simpleTakeoff(target_hight=1):
+        if not self.controller.setMode():
+            self.get_logger().info("setMode fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        time.sleep(4)
+        self.get_logger().info("takeoff")
+        if not self.mission.simpleTakeoff():
             self.get_logger().info("takeoff fail")
             self.flow_mode = self.STOP_FLOW
             return
-        self.get_logger().info("land to platform")
-        self.controller.setMode()
-        time.sleep(4)
-        self.mission.landedOnPlatform()
+        self.get_logger().info("fire distinguish")
+        if not self.mission.fireDistinguish():
+            self.get_logger().info("fire distinguish fail")
+            # self.flow_mode = self.STOP_FLOW
+            # return
+        if not self.mission.simpleLanding():
+            self.get_logger().info("fire distinguish fail")
+            self.flow_mode = self.STOP_FLOW
+            return
         self.flow_mode = self.STOP_FLOW
 
     def flow1(self):
@@ -115,35 +126,36 @@ class MainFlightNode(Node):
         滅火流程
         起飛 --> 飛到指定位置 --> 飛回原點 --> 降落
         """
-        # self.get_logger().info('start takeoff')
-        # if not self.mission.simpleTakeoff():
-        #     self.get_logger().info("takeoff fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
-        # time.sleep(3)
-        # if not self.mission.navigateTo(
-        #     self.thermal_alert_msg.x, self.thermal_alert_msg.y, 0, 0
-        # ):
-        #     self.get_logger().info("navigateTo fail")
-        #     self.flow_mode = self.STOP_FLOW
-        #     return
-        self.get_logger().info('start navigateTo')
-        if not self.mission.navigateTo(1, 2, 2):
+        if not self.controller.setMode():
+            self.get_logger().info("setMode fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        time.sleep(4)
+        self.get_logger().info("takeoff")
+        if not self.mission.simpleTakeoff():
+            self.get_logger().info("takeoff fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        self.get_logger().info("navigateTo fire")
+        if not self.mission.navigateTo(
+            self.thermal_alert_msg.x, self.thermal_alert_msg.y, 2
+        ):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
-        # wait for 3 seconds
-        self.get_logger().info('fight fire')
-        time.sleep(3)
-        # set home position
-        self.get_logger().info('start go home')
-        if not self.mission.navigateTo(0, 0, 2):
+        self.get_logger().info("fire distinguish")
+        if not self.mission.fireDistinguish():
+            self.get_logger().info("fire distinguish fail")
+            # self.flow_mode = self.STOP_FLOW
+            # return
+        self.get_logger().info("navigateTo home")
+        if not self.mission.navigateTo(6.87, 0.84, 2):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
-        self.get_logger().info('start land on platform')
+        self.get_logger().info("landedOnPlatform")
         if not self.mission.landedOnPlatform():
-            self.get_logger().info("land fail")
+            self.get_logger().info("landedOnPlatform fail")
             self.flow_mode = self.STOP_FLOW
             return
         self.flow_mode = self.STOP_FLOW
@@ -153,7 +165,7 @@ def main():
     if not rclpy.ok():
         rclpy.init()
     flight_node = MainFlightNode()
-    flight_node.flow_mode = flight_node.TEST_FLOW
+    flight_node.flow_mode = flight_node.STOP_FLOW
     rclpy.spin(flight_node)
     flight_node.destroy_node()
     rclpy.shutdown()

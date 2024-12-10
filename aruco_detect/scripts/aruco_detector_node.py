@@ -190,7 +190,7 @@ class ArucoDetector(Node):
             )
             self.closest_aruco_publisher.publish(marker)
         self.get_logger().info(
-            f"\rid: {marker.id} x: {marker.x:.2f}, y: {marker.y:.2f}, z: {marker.z:.2f}, yaw: {marker.yaw:.2f}, pitch: {marker.pitch:.2f}, roll: {marker.roll:.2f}"
+            f"id: {marker.id} x: {marker.x:.2f}, y: {marker.y:.2f}, z: {marker.z:.2f}, yaw: {marker.yaw:.2f}, pitch: {marker.pitch:.2f}, roll: {marker.roll:.2f}"
         )
 
     def rotateAndOffsetArucoCoordinate(

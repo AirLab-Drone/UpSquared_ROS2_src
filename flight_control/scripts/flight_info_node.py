@@ -13,7 +13,8 @@ class FlightInfoNode(Node):
     
     def mainDetectCallback(self):
         print(f'UWB coordinate: x={self.flight_info.uwb_coordinate.x}, y={self.flight_info.uwb_coordinate.y}, z={self.flight_info.uwb_coordinate.z}')
-        print(f'rangefinder distance: {self.flight_info.rangefinder_alt}')
+        print(f'rangefinder range: {self.flight_info.rangefinder_alt}')
+        print(f'rangefinder2 range: {self.flight_info.rangefinder2_range}')
 
 
 def main():
