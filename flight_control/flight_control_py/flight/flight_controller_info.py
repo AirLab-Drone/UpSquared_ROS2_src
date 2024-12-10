@@ -145,11 +145,9 @@ class FlightInfo:
         Callback function for the rangefinder subscription.
         """
         if self.node.get_parameter("simulation").get_parameter_value().bool_value:
-            self.rangefinder2_range = 1000
-            # self.rangefinder2_range = msg.ranges[0]
+            self.rangefinder2_range = msg.ranges[0]
         else:
-            # self.rangefinder2_range = msg.range
-            self.rangefinder2_range = 1000
+            self.rangefinder2_range = msg.range
         self.node.get_logger().debug(f"rangefinder2 range: {self.rangefinder2_range}")
 
     def destroy(self):

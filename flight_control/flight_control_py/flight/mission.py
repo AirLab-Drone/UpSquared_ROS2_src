@@ -200,10 +200,6 @@ class Mission:
         def init_pid():
             current_time = rclpy.clock.Clock().now().nanoseconds
             current_time = rclpy.clock.Clock().now().nanoseconds
-            # pid_move_x = PID(0.5, 0.01, 0.005, current_time)  # 修改後的 PID 參數
-            # pid_move_y = PID(0.5, 0.01, 0.005, current_time)  # 修改後的 PID 參數
-            # pid_move_z = PID(0.3, 0.01, 0.005, current_time, LOWEST_HEIGHT)  # 修改後的 PID 參數
-            # pid_move_yaw = PID(0.5, 0.01, 0.005, current_time)
             pid_move_x = PID(0.6, 0.0006, 0.00083, current_time)
             pid_move_y = PID(0.6, 0.0006, 0.00083, current_time)
             pid_move_z = PID(0.4, 0.0006, 0.00083, current_time, LOWEST_HEIGHT)
