@@ -12,26 +12,26 @@ class PlatformCommunicationNode(Node):
         super().__init__("platform_communication_node")
         # ------------------------------ define service ------------------------------ #
         # x y 滑桿
-        self.srv = self.create_service(
+        self.create_service(
             AlignmentRod, "/platform_communication/alignment_rod", self.alignment_rod_callback
         )
         # 開孔板
-        self.srv = self.create_service(
+        self.create_service(
             PerforatedPlate, "/platform_communication/perforated_plate", self.perforated_plate_callback
         )
         # 補充瓶移動
-        self.srv = self.create_service(
+        self.create_service(
             MovetoChargeTank, "/platform_communication/moveto_charge_tank", self.moveto_charge_tank_callback
         )
-        self.srv = self.create_service(
+        self.create_service(
             MovetoExtinguisher, "/platform_communication/moveto_extinguisher", self.moveto_extinguisher_callback
         )
         # vertical slider
-        self.srv = self.create_service(
+        self.create_service(
             VerticalSlider, "/platform_communication/vertical_slider", self.vertical_slider_callback
         )
         # 市電供電
-        self.srv = self.create_service(
+        self.create_service(
             MainsPower, "/platform_communication/mains_power", self.mains_power_callback
         )
         # ------------------------------ io pin setup ------------------------------ #
@@ -122,7 +122,7 @@ class PlatformCommunicationNode(Node):
         self.get_logger().info("vertical slider service is called")
         response.success = True
         try:
-            if request.open:
+            if request.up:
                 result = self.client.write_coil(self.rise_vertical_slider_addr, True, unit=self.UNIT)
                 if result.isError():
                     response.success = False

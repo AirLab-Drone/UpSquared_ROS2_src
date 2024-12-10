@@ -11,7 +11,15 @@ import time
 import yaml
 from std_msgs.msg import Int32MultiArray, Float32
 from thermal_msgs.msg import ThermalAlert
-from payload.srv import Spry
+from payload.srv import Spry, HoldPayload, CheckPayload
+from platform_communication.srv import (
+    AlignmentRod,
+    PerforatedPlate,
+    MovetoChargeTank,
+    MovetoExtinguisher,
+    VerticalSlider,
+    MainsPower,
+)
 
 
 class Mission:
@@ -59,11 +67,59 @@ class Mission:
         )
         # ------------------------------ service client ------------------------------ #
         if not self.node.get_parameter("simulation").get_parameter_value().bool_value:
-            self.fire_extinguisher_spry_client = self.node.create_client(Spry, "/spry")
+            # payload service client
+            self.fire_extinguisher_spry_client = self.node.create_client(
+                Spry, "/fire_extinguisher_jy_modbus/spry"
+            )
             while not self.fire_extinguisher_spry_client.wait_for_service(
                 timeout_sec=1.0
             ):
                 self.node.get_logger().info("service not available, waiting again...")
+            self.hold_fire_extinguisher_client = self.node.create_client(
+                HoldPayload, "/fire_extinguisher_jy_modbus/hold_fire_extinguisher"
+            )
+            while not self.hold_fire_extinguisher_client.wait_for_service(
+                timeout_sec=1.0
+            ):
+                self.node.get_logger().info("service not available, waiting again...")
+            self.check_fire_extinguisher_client = self.node.create_client(
+                CheckPayload, "/fire_extinguisher_jy_modbus/check_fire_extinguisher"
+            )
+            while not self.check_fire_extinguisher_client.wait_for_service(
+                timeout_sec=1.0
+            ):
+                self.node.get_logger().info("service not available, waiting again...")
+            # platform service client
+            self.alignment_rod_client = self.create_client(
+                AlignmentRod, "platform_communication/alignment_rod"
+            )
+            while not self.alignment_rod_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+            self.perforated_plate_client = self.create_client(
+                PerforatedPlate, "platform_communication/perforated_plate"
+            )
+            while not self.perforated_plate_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+            self.moveto_charge_tank_client = self.create_client(
+                MovetoChargeTank, "platform_communication/moveto_charge_tank"
+            )
+            while not self.moveto_charge_tank_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+            self.moveto_extinguisher_client = self.create_client(
+                MovetoExtinguisher, "platform_communication/moveto_extinguisher"
+            )
+            while not self.moveto_extinguisher_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+            self.vertical_slider_client = self.create_client(
+                VerticalSlider, "platform_communication/vertical_slider"
+            )
+            while not self.vertical_slider_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+            self.mains_power_client = self.create_client(
+                MainsPower, "platform_communication/mains_power"
+            )
+            while not self.mains_power_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
         # ---------------------------- aruco marker config --------------------------- #
         self.markers_config = get_yaml_config("aruco_detect", "aruco_markers.yaml")[
             "aruco_markers"
@@ -100,6 +156,11 @@ class Mission:
     def stopMission(self):
         self.__setMode(self.WAIT_MODE)
         self.controller.setZeroVelocity()
+
+    def call_service_and_wait(self, client, request, timeout_sec=4):
+        future = client.call_async(request)
+        self.node.executor.spin_until_future_complete(future, timeout_sec=timeout_sec)
+        return future.result()
 
     # ---------------------------------------------------------------------------- #
     #                                    Mission                                   #
@@ -446,7 +507,7 @@ class Mission:
         # ----------------------------------- 尋找火源 ----------------------------------- #
         # 螺旋尋找火源
         omega = 2 * math.pi / 10  # 每十秒繞一圈的角速度
-        k = 0.3 / (2* math.pi)  # 螺旋擴展速率，每秒擴展0.3m
+        k = 0.3 / (2 * math.pi)  # 螺旋擴展速率，每秒擴展0.3m
         angle = 0
         max_radius = 1.0  # 當半徑到1.5時停止飛行
         start_time = rclpy.clock.Clock().now()
@@ -526,12 +587,13 @@ class Mission:
             self.node.get_logger().info(
                 "fire distinguish-----------------------------------------------"
             )
-            spry_future = self.fire_extinguisher_spry_client.call_async(Spry.Request())
-            self.node.executor.spin_until_future_complete(spry_future, timeout_sec=4)
-            if spry_future.result() is None:
+            result = self.call_service_and_wait(
+                self.fire_extinguisher_spry_client, Spry.Request()
+            )
+            if result is None:
                 is_success = False
             else:
-                is_success = spry_future.result().success
+                is_success = result.success
         else:
             time.sleep(2)
             is_success = True
@@ -540,3 +602,78 @@ class Mission:
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
         return is_success
+
+    def loadingExtinguisher(self, extinguisher_num):
+        result = self.call_service_and_wait(
+            self.alignment_rod_client, AlignmentRod.Request(open=False)
+        )
+        if result is None or not result.success:
+            return False
+
+        result = self.call_service_and_wait(
+            self.perforated_plate_client, PerforatedPlate.Request(open=True)
+        )
+        if result is None or not result.success:
+            return False
+
+        result = self.call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+        )
+        if result is None or not result.success:
+            return False
+
+        result = self.call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
+        )
+        if result is None or not result.success:
+            return False
+
+        result = self.call_service_and_wait(
+            self.moveto_extinguisher_client,
+            MovetoExtinguisher.Request(num=extinguisher_num),
+        )
+        if result is None or not result.success:
+            return False
+
+        result = self.call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=True)
+        )
+        if result is None or not result.success:
+            return False
+
+        result = self.call_service_and_wait(
+            self.check_fire_extinguisher_client, CheckPayload.Request()
+        )
+        if result is None or not result.success:
+            return False
+
+        result = self.call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
+        )
+        if result is None or not result.success:
+            return False
+
+        result = self.call_service_and_wait(
+            self.alignment_rod_client, AlignmentRod.Request(open=True)
+        )
+        if result is None or not result.success:
+            return False
+
+        return True
+
+    def prepareLanding(self):
+        result = self.call_service_and_wait(
+            self.alignment_rod_client, AlignmentRod.Request(open=True)
+        )
+        if result is None or not result.success:
+            return False
+
+        result = self.call_service_and_wait(
+            self.perforated_plate_client, PerforatedPlate.Request(open=False)
+        )
+        if result is None or not result.success:
+            return False
+
+        return True
+
+    def 

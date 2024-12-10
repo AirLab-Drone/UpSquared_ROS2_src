@@ -30,6 +30,7 @@ class MainFlightNode(Node):
         self.controller = FlightControl(self)
         self.flight_info = FlightInfo(self)
         self.mission = Mission(self.controller, self.flight_info, self)
+        # -------------------------------- subscriber -------------------------------- #
         # 接收火源警報
         self.create_subscription(
             ThermalAlert,
@@ -37,7 +38,6 @@ class MainFlightNode(Node):
             self.thermalAlertCallback,
             rclpy.qos.qos_profile_sensor_data,
         )
-
         # --------------------------------- 控制飛行流程偵測器 -------------------------------- #
         self.flow_thread = threading.Thread()  # 建立空執行緒
         self.flow_mode = self.STOP_FLOW  # 暫時使用的流程模式
@@ -131,6 +131,11 @@ class MainFlightNode(Node):
             self.flow_mode = self.STOP_FLOW
             return
         time.sleep(4)
+        self.get_logger().info("loading extinguisher")
+        if not self.mission.loadingExtinguisher():
+            self.get_logger().info("loading extinguisher fail")
+            self.flow_mode = self.STOP_FLOW
+            return
         self.get_logger().info("takeoff")
         if not self.mission.simpleTakeoff():
             self.get_logger().info("takeoff fail")
@@ -153,14 +158,17 @@ class MainFlightNode(Node):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return
+        self.get_logger().info("prepare landing")
+        if not self.mission.prepareLanding():
+            self.get_logger().info("prepareLanding fail")
+            self.flow_mode = self.STOP_FLOW
+            return
         self.get_logger().info("landedOnPlatform")
         if not self.mission.landedOnPlatform():
             self.get_logger().info("landedOnPlatform fail")
             self.flow_mode = self.STOP_FLOW
             return
         self.flow_mode = self.STOP_FLOW
-    def lainding_flow(self):
-        pass
 
 def main():
     if not rclpy.ok():
