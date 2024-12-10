@@ -4,7 +4,7 @@ opencv-contrib-python
 scipy  
 cv_bridge  
 ```
-pip install opencv-python opencv-contrib-python scipy cv_bridge
+pip install opencv-python opencv-contrib-python scipy cv_bridge gpio
 ```
 mavros  
 ```

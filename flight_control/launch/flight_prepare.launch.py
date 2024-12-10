@@ -61,11 +61,11 @@ def generate_launch_description():
             IncludeLaunchDescription(
                 AnyLaunchDescriptionSource(
                     os.path.join(
-                        get_package_share_directory("mavros"), "launch/apm.launch"
+                        get_package_share_directory("flight_control"), "launch/apm.launch"
                     )
                 ),
                 launch_arguments={
-                    "fcu_url": "/dev/ttyACM0",
+                    "fcu_url": "/dev/drone_usb",
                 }.items(),
             ),
             # changeMavrosPublishRate(24),

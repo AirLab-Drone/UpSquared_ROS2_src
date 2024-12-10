@@ -53,8 +53,9 @@ find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(OpenCV REQUIRED)
-
-
+find_package(ament_index_cpp REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_package(thermal_msgs REQUIRED)
 
 
 
@@ -73,45 +74,42 @@ find_package(OpenCV REQUIRED)
 
 # /* ----------------------------------- 測試用 ---------------------------------- */
 add_executable(test_node src/test.cpp)
-target_link_libraries(test_node 
-    ${ARM_LIBRARIES}
-    GuideUSBCamera -ldl
-    GuideMT -ldl
-    pthread
-    m
-    udev
-    
+target_link_libraries(test_node
+  ${ARM_LIBRARIES}
+  GuideUSBCamera -ldl
+  GuideMT -ldl
+  pthread
+  m
+  udev
 )
-ament_target_dependencies(test_node 
-    rclcpp 
-    std_msgs 
-    sensor_msgs 
-    cv_bridge 
-    image_transport 
-    OpenCV)
- 
+ament_target_dependencies(test_node
+  rclcpp
+  std_msgs
+  sensor_msgs
+  cv_bridge
+  image_transport
+  OpenCV)
+
 
 # /* -------------------------------- ros2 node ------------------------------- */
 add_executable(COIN417RG2_ros2_node src/COIN417RG2_ros2_node.cpp)
-target_link_libraries(COIN417RG2_ros2_node 
-    ${ARM_LIBRARIES}
-    GuideUSBCamera -ldl
-    GuideMT -ldl
-    pthread
-    m
-    udev
+target_link_libraries(COIN417RG2_ros2_node
+  ${ARM_LIBRARIES}
+  GuideUSBCamera -ldl
+  GuideMT -ldl
+  pthread
+  m
+  udev
 )
-ament_target_dependencies(COIN417RG2_ros2_node 
-    rclcpp 
-    std_msgs 
-    sensor_msgs 
-    cv_bridge 
-    image_transport 
-    OpenCV)
-
-
-
-
+ament_target_dependencies(COIN417RG2_ros2_node
+  rclcpp
+  std_msgs
+  sensor_msgs
+  cv_bridge
+  image_transport
+  OpenCV
+  thermal_msgs
+)
 
 install(TARGETS
   test_node
@@ -119,10 +117,20 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+#/* ----------------------------- python scripts ----------------------------- */
+ament_python_install_package(${PROJECT_NAME}_py)
+# Install Python executables
+file(GLOB SCRIPTS "scripts/*.py")
+install(PROGRAMS
+  ${SCRIPTS}
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 
 install(DIRECTORY
   launch
   lib
+  config
   DESTINATION share/${PROJECT_NAME}/
 )
 

@@ -17,7 +17,7 @@ def generate_launch_description():
 
     show_image = DeclareLaunchArgument(
         "show_image",
-        default_value="False",  # 預設值必須是字串
+        default_value="True",  # 預設值必須是字串
         description="Enable camera image display",
     )
     # yaml檔案的路徑
@@ -50,6 +50,7 @@ def generate_launch_description():
                     {"simulation": False},
                     {"aruco_marker_config_file": aruco_markers_file},
                     {"camera_config_file": camera_config_file},
+                    {"show_image": LaunchConfiguration("show_image")},
                 ],
             ),
         ]

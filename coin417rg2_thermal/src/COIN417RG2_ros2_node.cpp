@@ -34,6 +34,8 @@ extern "C"
 #include <std_msgs/msg/string.hpp>
 #include "cv_bridge/cv_bridge.h"
 #include <image_transport/image_transport.hpp>
+#include <thermal_msgs/msg/thermal_alert.hpp>
+
 
 
 
@@ -157,10 +159,10 @@ public:
     ThermalCameraNode() : Node("thermal_camera_node") {
         // publisher_ = this->create_publisher<sensor_msgs::msg::Image>("thermal_image", 10);
     
-        pixel_pub_ = this->create_publisher<std_msgs::msg::Int32MultiArray>("hot_spot_temperature_pos", 10);    // temperature position [x, y]
-        image_pub_ = this->create_publisher<sensor_msgs::msg::Image>("thermal_image", 10);                  // thermal rgb img
-        temperature_pub_ = this->create_publisher<std_msgs::msg::Float32>("hot_spot_temperature", 10);       // hot spot temperature
-
+        pixel_pub_ = this->create_publisher<std_msgs::msg::Int32MultiArray>("/coin417rg2_thermal/hot_spot_temperature_pos", 10);    // temperature position [x, y]
+        image_pub_ = this->create_publisher<sensor_msgs::msg::Image>("/coin417rg2_thermal/thermal_image", 10);                  // thermal rgb img
+        temperature_pub_ = this->create_publisher<std_msgs::msg::Float32>("/coin417rg2_thermal/hot_spot_temperature", 10);       // hot spot temperature
+        hot_spot_pub_ = this->create_publisher<thermal_msgs::msg::ThermalAlert>("/coin417rg2_thermal/hot_spot", 10);   // x, y of pixel and temperature
         timer_ = this->create_wall_timer(1ms, std::bind(&ThermalCameraNode::publishThermalData, this));
     }
 
@@ -195,15 +197,22 @@ private:
             auto pixel_msg = std::make_unique<std_msgs::msg::Int32MultiArray>();
             pixel_msg->data = {x_pixel_, y_pixel_};
             pixel_pub_->publish(std::move(pixel_msg));
-            RCLCPP_INFO(this->get_logger(), "Published pixel values: [%d, %d]", x_pixel_, y_pixel_);
+            // RCLCPP_INFO(this->get_logger(), "Published pixel values: [%d, %d]", x_pixel_, y_pixel_);
 
 
             // Publish temperature
             auto temperature_msg = std::make_unique<std_msgs::msg::Float32>();
             temperature_msg->data = max_temperature_;
             temperature_pub_->publish(std::move(temperature_msg));
-            RCLCPP_INFO(this->get_logger(), "Published max temperature: %f", max_temperature_);
-                
+            // RCLCPP_INFO(this->get_logger(), "Published max temperature: %f", max_temperature_);
+            
+            // Publish hot spot
+            auto hot_spot_msg = std::make_unique<thermal_msgs::msg::ThermalAlert>();
+            hot_spot_msg->x = x_pixel_;
+            hot_spot_msg->y = y_pixel_;
+            hot_spot_msg->temperature = max_temperature_;
+            hot_spot_pub_->publish(std::move(hot_spot_msg));
+            // RCLCPP_INFO(this->get_logger(), "Published hot spot: [%d, %d, %f]", x_pixel_, y_pixel_, max_temperature_);
 
             if (frameData.frame_yuv_data != NULL){
                 cv::Mat YUV_Image = convertYUV422ToBGR(frameData.frame_yuv_data);
@@ -220,6 +229,7 @@ private:
     rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr pixel_pub_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_pub_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr temperature_pub_;
+    rclcpp::Publisher<thermal_msgs::msg::ThermalAlert>::SharedPtr hot_spot_pub_;
     rclcpp::TimerBase::SharedPtr timer_;
 
     int x_pixel_ = 0;
