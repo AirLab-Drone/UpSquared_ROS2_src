@@ -10,7 +10,7 @@ def launch_setup(context, *args, **kwargs):
     parm_simulation = parm_simulation_str.lower() == 'true'  # 将字符串解析为布尔值
 
     aruco_markers_file = os.path.join(
-        get_package_share_directory('flight_control'),
+        get_package_share_directory('aruco_detect'),
         'config',
         'aruco_markers.yaml',
     )

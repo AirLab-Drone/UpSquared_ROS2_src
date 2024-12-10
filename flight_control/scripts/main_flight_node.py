@@ -159,7 +159,8 @@ class MainFlightNode(Node):
             self.flow_mode = self.STOP_FLOW
             return
         self.flow_mode = self.STOP_FLOW
-
+    def lainding_flow(self):
+        pass
 
 def main():
     if not rclpy.ok():
