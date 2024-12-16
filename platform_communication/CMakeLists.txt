@@ -37,6 +37,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   srv/MovetoExtinguisher.srv
   srv/PerforatedPlate.srv
   srv/VerticalSlider.srv
+  srv/CheckTankStatus.srv
   DEPENDENCIES std_msgs
 )
 

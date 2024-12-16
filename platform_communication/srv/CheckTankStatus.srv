@@ -1,0 +1,4 @@
+
+---
+bool success # 是否成功
+int32 num # 料架上是第幾料筒

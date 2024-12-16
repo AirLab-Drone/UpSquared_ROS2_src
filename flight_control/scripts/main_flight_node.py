@@ -143,7 +143,7 @@ class MainFlightNode(Node):
             return
         self.get_logger().info("navigateTo fire")
         if not self.mission.navigateTo(
-            self.thermal_alert_msg.x, self.thermal_alert_msg.y, 2
+            self.thermal_alert_msg.x, self.thermal_alert_msg.y, 2.5
         ):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
@@ -154,7 +154,7 @@ class MainFlightNode(Node):
             # self.flow_mode = self.STOP_FLOW
             # return
         self.get_logger().info("navigateTo home")
-        if not self.mission.navigateTo(6.87, 0.84, 2):
+        if not self.mission.navigateTo(6.87, 0.84, 2.5):
             self.get_logger().info("navigateTo fail")
             self.flow_mode = self.STOP_FLOW
             return

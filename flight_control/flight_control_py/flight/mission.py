@@ -19,6 +19,7 @@ from platform_communication.srv import (
     MovetoExtinguisher,
     VerticalSlider,
     MainsPower,
+    CheckTankStatus,
 )
 
 
@@ -34,6 +35,9 @@ class Mission:
     LANDING_ON_PLATFORM_MODE = 2
     NAVIGATION_MODE = 3
     FIRE_DISTINGUISH_MODE = 4
+    LOADING_EXTINGUISHER_MODE = 5
+    PREPARE_LANDING_MODE = 6
+    PLATFORM_ALIGN_MODE = 7
     # define control parameter
     LIMIT_SEALING_RANGE = 0.8  # 距離天花板的最小距離
     LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
@@ -120,6 +124,12 @@ class Mission:
             )
             while not self.mains_power_client.wait_for_service(timeout_sec=1.0):
                 self.get_logger().info("service not available, waiting again...")
+            self.check_tank_status_client = self.create_client(
+                CheckTankStatus, "platform_communication/check_tank_status"
+            )
+            while not self.check_tank_status_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+
         # ---------------------------- aruco marker config --------------------------- #
         self.markers_config = get_yaml_config("aruco_detect", "aruco_markers.yaml")[
             "aruco_markers"
@@ -157,7 +167,7 @@ class Mission:
         self.__setMode(self.WAIT_MODE)
         self.controller.setZeroVelocity()
 
-    def call_service_and_wait(self, client, request, timeout_sec=4):
+    def __call_service_and_wait(self, client, request, timeout_sec=4):
         future = client.call_async(request)
         self.node.executor.spin_until_future_complete(future, timeout_sec=timeout_sec)
         return future.result()
@@ -182,6 +192,16 @@ class Mission:
     #     return True
 
     def simpleTakeoff(self, target_hight=2):
+        """
+        簡單起飛函式。
+        此函式會檢查飛行器的當前模式是否為等待模式，並嘗試讓飛行器起飛到目標高度。
+        如果飛行器離天花板太近或離地面太近，則會調整目標高度或禁止起飛。
+        Parameters:
+        target_hight (float): 目標高度，預設為2米。
+        Returns:
+        bool: 起飛成功返回True，否則返回False。
+        """
+
         LIMIT_SEALING_RANGE = self.LIMIT_SEALING_RANGE
         LOWEST_HEIGHT = self.LOWEST_HEIGHT
         count = 0
@@ -221,6 +241,12 @@ class Mission:
         return True
 
     def simpleLanding(self):
+        """
+        執行最原始的降落方式，並檢查是否解除飛行模式。
+        Returns:
+            bool: 如果降落成功，返回 True。
+        """
+
         while not self.controller.land():
             print("landing")
         while self.flight_info.state.armed:
@@ -379,7 +405,7 @@ class Mission:
         self,
         destination_x: float,
         destination_y: float,
-        destination_z: float = 2,
+        destination_z: float = 2.5,
     ):
         """
         Function to navigate the drone to a specified location.
@@ -402,10 +428,10 @@ class Mission:
         self.__setMode(self.NAVIGATION_MODE)
         # --------------------------------- variable --------------------------------- #
         LIMIT_SEALING_RANGE = self.LIMIT_SEALING_RANGE
-        LOWEST_HEIGHT = self.LOWEST_HEIGHT
         MAX_SPEED = self.MAX_SPEED
         MAX_YAW = self.MAX_YAW
         MAX_VERTICAL_SPEED = self.MAX_VERTICAL_SPEED
+        NAV_LOWEST_HEIGHT = 2.5
         bcn_orient_yaw = (
             self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
         )
@@ -420,12 +446,12 @@ class Mission:
             up_distance = self.flight_info.rangefinder2_range
             down_distance = self.flight_info.rangefinder_alt
             vertical_space = up_distance + down_distance
-            if vertical_space < LIMIT_SEALING_RANGE + LOWEST_HEIGHT:
+            if vertical_space < LIMIT_SEALING_RANGE + NAV_LOWEST_HEIGHT:
                 return 0
             if vertical_space < destination_z + LIMIT_SEALING_RANGE:
                 target_high = (
-                    vertical_space - LIMIT_SEALING_RANGE - LOWEST_HEIGHT
-                ) / 2 + LOWEST_HEIGHT
+                    vertical_space - LIMIT_SEALING_RANGE - NAV_LOWEST_HEIGHT
+                ) / 2 + NAV_LOWEST_HEIGHT
                 return target_high - current_high
             if vertical_space > destination_z + LIMIT_SEALING_RANGE:
                 return destination_z - current_high
@@ -452,7 +478,7 @@ class Mission:
             # 高度空間不足就停止
             if (
                 self.flight_info.rangefinder_alt + self.flight_info.rangefinder2_range
-                < LIMIT_SEALING_RANGE + LOWEST_HEIGHT
+                < LIMIT_SEALING_RANGE + NAV_LOWEST_HEIGHT
             ):
                 self.stopMission()
                 self.node.get_logger().error("not enough space to navigate")
@@ -490,6 +516,13 @@ class Mission:
         return True
 
     def fireDistinguish(self):
+        """
+        執行滅火任務。
+        此方法會先檢查模式是否為等待模式，然後進行螺旋搜尋火源，找到火源後進行滅火操作。
+        Returns:
+            bool: 滅火任務是否成功。
+        """
+
         # 檢查先前模式是否為等待模式，定且設定目前模式為降落至平台模式
         if self.mode != self.WAIT_MODE:
             self.stopMission()
@@ -587,7 +620,7 @@ class Mission:
             self.node.get_logger().info(
                 "fire distinguish-----------------------------------------------"
             )
-            result = self.call_service_and_wait(
+            result = self.__call_service_and_wait(
                 self.fire_extinguisher_spry_client, Spry.Request()
             )
             if result is None:
@@ -603,77 +636,160 @@ class Mission:
         self.stopMission()
         return is_success
 
-    def loadingExtinguisher(self, extinguisher_num):
-        result = self.call_service_and_wait(
+    def loadingExtinguisher(self):
+        """
+        此函數會檢查現在的料筒是在哪個位置，並移動到填充下一個位置的料筒。
+        在滅火的過程中，料筒不會歸位，所以可以用現在料筒位置判斷下一個料筒的位置，當料筒位置在2時表示沒有料筒了。
+        @ return: bool 是否成功裝填滅火器
+        """
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.LOADING_EXTINGUISHER_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.LOADING_EXTINGUISHER_MODE:
+            self.node.get_logger().info("It's not in LOADING_EXTINGUISHER_MODE")
+            self.stopMission()
+            return False
+        result = self.__call_service_and_wait(
             self.alignment_rod_client, AlignmentRod.Request(open=False)
         )
         if result is None or not result.success:
+            self.stopMission()
             return False
 
-        result = self.call_service_and_wait(
+        result = self.__call_service_and_wait(
             self.perforated_plate_client, PerforatedPlate.Request(open=True)
         )
         if result is None or not result.success:
+            self.stopMission()
             return False
 
-        result = self.call_service_and_wait(
+        result = self.__call_service_and_wait(
             self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
         )
         if result is None or not result.success:
+            self.stopMission()
             return False
 
-        result = self.call_service_and_wait(
+        result = self.__call_service_and_wait(
             self.vertical_slider_client, VerticalSlider.Request(up=False)
         )
         if result is None or not result.success:
+            self.stopMission()
             return False
 
-        result = self.call_service_and_wait(
+        result = self.__call_service_and_wait(
+            self.check_tank_status_client, CheckTankStatus.Request()
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        if result.num >= 2:  # 滅火器數量2個，位置在2的時候表示沒有滅火器了
+            self.node.get_logger().info("fire extinguisher is empty")
+            self.stopMission()
+            return False
+        extinguisher_num = result.num + 1  # 裝填下一個滅火器
+
+        result = self.__call_service_and_wait(
             self.moveto_extinguisher_client,
             MovetoExtinguisher.Request(num=extinguisher_num),
         )
         if result is None or not result.success:
+            self.stopMission()
             return False
 
-        result = self.call_service_and_wait(
+        result = self.__call_service_and_wait(
             self.vertical_slider_client, VerticalSlider.Request(up=True)
         )
         if result is None or not result.success:
+            self.stopMission()
             return False
 
-        result = self.call_service_and_wait(
+        result = self.__call_service_and_wait(
             self.check_fire_extinguisher_client, CheckPayload.Request()
         )
         if result is None or not result.success:
+            self.stopMission()
             return False
 
-        result = self.call_service_and_wait(
+        result = self.__call_service_and_wait(
             self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
         )
         if result is None or not result.success:
+            self.stopMission()
             return False
 
-        result = self.call_service_and_wait(
+        result = self.__call_service_and_wait(
             self.alignment_rod_client, AlignmentRod.Request(open=True)
         )
         if result is None or not result.success:
+            self.stopMission()
             return False
-
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
         return True
 
     def prepareLanding(self):
-        result = self.call_service_and_wait(
+        """
+        準備降落任務，將平台設置成可供無人機降落的狀態。
+        返回:
+            bool: 如果降落準備成功，返回 True，否則返回 False。
+        """
+
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.PREPARE_LANDING_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.PREPARE_LANDING_MODE:
+            self.node.get_logger().info("It's not in PREPARE_LANDING_MODE")
+            self.stopMission()
+            return False
+        result = self.__call_service_and_wait(
             self.alignment_rod_client, AlignmentRod.Request(open=True)
         )
         if result is None or not result.success:
+            self.stopMission()
             return False
 
-        result = self.call_service_and_wait(
+        result = self.__call_service_and_wait(
             self.perforated_plate_client, PerforatedPlate.Request(open=False)
         )
         if result is None or not result.success:
+            self.stopMission()
             return False
-
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
         return True
 
-    def 
+    def platformAlignment(self):
+        """
+        平台對準功能。將無人機對齊到平台中心。
+        Returns:
+            bool: 如果任務成功完成，返回 True，否則返回 False。
+        """
+        
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.PREPARE_LANDING_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.PREPARE_LANDING_MODE:
+            self.node.get_logger().info("It's not in PREPARE_LANDING_MODE")
+            self.stopMission()
+            return False
+        result = self.__call_service_and_wait(
+            self.alignment_rod_client, AlignmentRod.Request(open=False)
+        )
+        if result is None or not result.success:
+            return False
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
