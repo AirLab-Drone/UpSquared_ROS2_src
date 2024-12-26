@@ -158,6 +158,9 @@ class Mission:
             self.LANDING_ON_PLATFORM_MODE,
             self.NAVIGATION_MODE,
             self.FIRE_DISTINGUISH_MODE,
+            self.LOADING_EXTINGUISHER_MODE,
+            self.PREPARE_LANDING_MODE,
+            self.PLATFORM_ALIGN_MODE,
         ]:
             self.node.get_logger().error("not a valid mode")
             return False
@@ -431,7 +434,7 @@ class Mission:
         MAX_SPEED = self.MAX_SPEED
         MAX_YAW = self.MAX_YAW
         MAX_VERTICAL_SPEED = self.MAX_VERTICAL_SPEED
-        NAV_LOWEST_HEIGHT = 2.5
+        NAV_LOWEST_HEIGHT = self.LOWEST_HEIGHT
         bcn_orient_yaw = (
             self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
         )

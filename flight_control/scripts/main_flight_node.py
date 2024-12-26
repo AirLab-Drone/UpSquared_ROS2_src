@@ -126,48 +126,52 @@ class MainFlightNode(Node):
         滅火流程
         起飛 --> 飛到指定位置 --> 飛回原點 --> 降落
         """
-        if not self.controller.setMode():
-            self.get_logger().info("setMode fail")
+        try:
+            if not self.controller.setMode():
+                self.get_logger().info("setMode fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            time.sleep(4)
+            self.get_logger().info("loading extinguisher")
+            if not self.mission.loadingExtinguisher():
+                self.get_logger().info("loading extinguisher fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            self.get_logger().info("takeoff")
+            if not self.mission.simpleTakeoff():
+                self.get_logger().info("takeoff fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            self.get_logger().info("navigateTo fire")
+            if not self.mission.navigateTo(
+                self.thermal_alert_msg.x, self.thermal_alert_msg.y, 3
+            ):
+                self.get_logger().info("navigateTo fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            self.get_logger().info("fire distinguish")
+            if not self.mission.fireDistinguish():
+                self.get_logger().info("fire distinguish fail")
+                # self.flow_mode = self.STOP_FLOW
+                # return
+            self.get_logger().info("navigateTo home")
+            if not self.mission.navigateTo(6.87, 0.84, 2.5):
+                self.get_logger().info("navigateTo fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            self.get_logger().info("prepare landing")
+            if not self.mission.prepareLanding():
+                self.get_logger().info("prepareLanding fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            self.get_logger().info("landedOnPlatform")
+            if not self.mission.landedOnPlatform():
+                self.get_logger().info("landedOnPlatform fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+        except Exception as e:
+            self.get_logger().info(f"flow1 error: {e}")
             self.flow_mode = self.STOP_FLOW
-            return
-        time.sleep(4)
-        self.get_logger().info("loading extinguisher")
-        if not self.mission.loadingExtinguisher():
-            self.get_logger().info("loading extinguisher fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info("takeoff")
-        if not self.mission.simpleTakeoff():
-            self.get_logger().info("takeoff fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info("navigateTo fire")
-        if not self.mission.navigateTo(
-            self.thermal_alert_msg.x, self.thermal_alert_msg.y, 2.5
-        ):
-            self.get_logger().info("navigateTo fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info("fire distinguish")
-        if not self.mission.fireDistinguish():
-            self.get_logger().info("fire distinguish fail")
-            # self.flow_mode = self.STOP_FLOW
-            # return
-        self.get_logger().info("navigateTo home")
-        if not self.mission.navigateTo(6.87, 0.84, 2.5):
-            self.get_logger().info("navigateTo fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info("prepare landing")
-        if not self.mission.prepareLanding():
-            self.get_logger().info("prepareLanding fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info("landedOnPlatform")
-        if not self.mission.landedOnPlatform():
-            self.get_logger().info("landedOnPlatform fail")
-            self.flow_mode = self.STOP_FLOW
-            return
         self.flow_mode = self.STOP_FLOW
 
 def main():
