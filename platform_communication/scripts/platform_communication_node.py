@@ -69,17 +69,17 @@ class PlatformCommunicationNode(Node):
             timeout=3,  # 超時時間
         )
         # address
-        self.open_alignment_rod_addr = 0x01
-        self.close_alignment_rod_addr = 0x02
-        self.open_perforated_plate_addr = 0x03
-        self.close_perforated_plate_addr = 0x04
-        self.moveto_charge_tank_addr = 0x05
-        self.moveto_extinguisher_addr = 0x06
-        self.rise_vertical_slider_addr = 0x07
-        self.drop_vertical_slider_addr = 0x08
-        self.open_mains_power_addr = 0x09
-        self.close_mains_power_addr = 0x0A
-        self.check_tank_status_addr = 0x0B
+        self.open_alignment_rod_addr = 1500
+        self.close_alignment_rod_addr = 1501
+        self.open_perforated_plate_addr = 1504
+        self.close_perforated_plate_addr = 1503
+        self.moveto_charge_tank_addr = 0x00 #todo chenge number
+        self.moveto_extinguisher_addr = 0x00 #todo chenge number
+        self.rise_vertical_slider_addr = 1509
+        self.drop_vertical_slider_addr = 1510
+        self.open_mains_power_addr = 1512
+        self.close_mains_power_addr = 1513
+        self.check_tank_status_addr = 0x00 #todo chenge number
         # check connection
         while not self.client.connect():
             self.get_logger().info("connecting...")

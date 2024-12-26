@@ -65,7 +65,8 @@ def generate_launch_description():
                     )
                 ),
                 launch_arguments={
-                    "fcu_url": "/dev/drone_usb",
+                    "fcu_url": "/dev/ttyACM0",
+                    # "fcu_url": "/dev/drone_usb",
                 }.items(),
             ),
             # changeMavrosPublishRate(24),
