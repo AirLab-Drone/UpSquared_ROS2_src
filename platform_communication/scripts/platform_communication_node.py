@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 import time
-from pymodbus.client.sync import ModbusSerialClient as ModbusClient
+from pymodbus.client.sync import ModbusTcpClient as ModbusClient
 from pymodbus.exceptions import ModbusIOException
 from platform_communication.srv import (
     AlignmentRod,
@@ -61,29 +61,27 @@ class PlatformCommunicationNode(Node):
         # ------------------------------ io pin setup ------------------------------ #
         self.UNIT = 0x01
         self.client = ModbusClient(
-            method="rtu",  # 通訊模式
-            port="/dev/ttyUSB0",  # 串口設備
-            baudrate=9600,  # 波特率
-            stopbits=2,  # 停止位
-            bytesize=8,  # 資料位
-            timeout=3,  # 超時時間
+            host="192.168.112.7",
+            port=502,
+            timeout=3,
         )
         # address
         self.open_alignment_rod_addr = 1500
         self.close_alignment_rod_addr = 1501
-        self.open_perforated_plate_addr = 1504
-        self.close_perforated_plate_addr = 1503
-        self.moveto_charge_tank_addr = 0x00 #todo chenge number
-        self.moveto_extinguisher_addr = 0x00 #todo chenge number
+        self.open_perforated_plate_addr = 1520
+        self.close_perforated_plate_addr = 1521
+        self.moveto_charge_tank_addr = 1506
+        self.moveto_extinguisher_addr = 1507
         self.rise_vertical_slider_addr = 1509
-        self.drop_vertical_slider_addr = 1510
+        self.drop_vertical_slider_addr = 1511
         self.open_mains_power_addr = 1512
         self.close_mains_power_addr = 1513
-        self.check_tank_status_addr = 0x00 #todo chenge number
+        self.check_tank_status_addr = 1600
         # check connection
         while not self.client.connect():
             self.get_logger().info("connecting...")
             time.sleep(0.5)
+        print("connected ^_^\n", self.client)
 
     def alignment_rod_callback(self, request, response):
         self.get_logger().info("alignment rod service is called")
@@ -104,6 +102,8 @@ class PlatformCommunicationNode(Node):
         except Exception as e:
             self.get_logger().error(f"error: {str(e)}")
             response.success = False
+        result = self.client.read_coils(self.open_alignment_rod_addr,2)
+        self.get_logger().info(f'result: {result.bits}')
         self.get_logger().info(f"response: {response}")
         return response
 
@@ -112,15 +112,11 @@ class PlatformCommunicationNode(Node):
         response.success = True
         try:
             if request.open:
-                result = self.client.write_coil(
-                    self.open_perforated_plate_addr, True, unit=self.UNIT
-                )
+                result = self.client.write_coil(self.open_perforated_plate_addr, True)
                 if result.isError():
                     response.success = False
             else:
-                result = self.client.write_coil(
-                    self.close_perforated_plate_addr, True, unit=self.UNIT
-                )
+                result = self.client.write_coil(self.close_perforated_plate_addr, True)
                 if result.isError():
                     response.success = False
         except Exception as e:
@@ -145,11 +141,15 @@ class PlatformCommunicationNode(Node):
         return response
 
     def moveto_extinguisher_callback(self, request, response):
+        if request.num not in [1,2]:
+            self.get_logger().info("out of extinguish range")
+            response.success = False
+            return response
         self.get_logger().info("moveto extinguisher service is called")
         response.success = True
         try:
             result = self.client.write_coil(
-                self.moveto_extinguisher_addr, request.num, unit=self.UNIT
+                self.moveto_extinguisher_addr + request.num -1, request.num, unit=self.UNIT
             )
             if result.isError():
                 response.success = False
@@ -207,15 +207,21 @@ class PlatformCommunicationNode(Node):
         self.get_logger().info("check tank status service is called")
         response.success = True
         try:
-            result = self.client.read_discrete_inputs(
-                self.check_tank_status_addr, 1, unit=self.UNIT
+            result = self.client.read_coils(
+                self.check_tank_status_addr, 3
             )
             if result.isError():
                 self.get_logger().error("ModbusIOException")
                 response.success = False
                 return response
             self.get_logger().info(str(result.bits))
-            response.success = result.bits[0]
+            # 判斷現在在哪一個桶位
+            index = -1
+            for i in range(len(result.bits)):
+                if result.bits[i] == 1:
+                    index = i
+                    break
+            response.num = index
         except Exception as e:
             self.get_logger().error(f"error: {str(e)}")
             response.success = False
