@@ -77,12 +77,15 @@ class PlatformCommunicationNode(Node):
         self.open_mains_power_addr = 1512
         self.close_mains_power_addr = 1513
         self.check_tank_status_addr = 1600
+        self.finish_status_addr = 0x00 # todo mortify finish status address
         # check connection
         while not self.client.connect():
             self.get_logger().info("connecting...")
             time.sleep(0.5)
         print("connected ^_^\n", self.client)
-
+    # ---------------------------------------------------------------------------- #
+    #                                   callback                                   #
+    # ---------------------------------------------------------------------------- #
     def alignment_rod_callback(self, request, response):
         self.get_logger().info("alignment rod service is called")
         response.success = True
@@ -105,6 +108,8 @@ class PlatformCommunicationNode(Node):
         result = self.client.read_coils(self.open_alignment_rod_addr,2)
         self.get_logger().info(f'result: {result.bits}')
         self.get_logger().info(f"response: {response}")
+        if response.success:
+            response.success = self.wait_finish()
         return response
 
     def perforated_plate_callback(self, request, response):
@@ -123,6 +128,8 @@ class PlatformCommunicationNode(Node):
             self.get_logger().error(f"error: {str(e)}")
             response.success = False
         self.get_logger().info(f"response: {response}")
+        if response.success:
+            response.success = self.wait_finish()
         return response
 
     def moveto_charge_tank_callback(self, request, response):
@@ -138,6 +145,8 @@ class PlatformCommunicationNode(Node):
             self.get_logger().error(f"error: {str(e)}")
             response.success = False
         self.get_logger().info(f"response: {response}")
+        if response.success:
+            response.success = self.wait_finish()
         return response
 
     def moveto_extinguisher_callback(self, request, response):
@@ -157,6 +166,8 @@ class PlatformCommunicationNode(Node):
             self.get_logger().error(f"error: {str(e)}")
             response.success = False
         self.get_logger().info(f"response: {response}")
+        if response.success:
+            response.success = self.wait_finish()
         return response
 
     def vertical_slider_callback(self, request, response):
@@ -179,6 +190,8 @@ class PlatformCommunicationNode(Node):
             self.get_logger().error(f"error: {str(e)}")
             response.success = False
         self.get_logger().info(f"response: {response}")
+        if response.success:
+            response.success = self.wait_finish()
         return response
 
     def mains_power_callback(self, request, response):
@@ -201,6 +214,8 @@ class PlatformCommunicationNode(Node):
             self.get_logger().error(f"error: {str(e)}")
             response.success = False
         self.get_logger().info(f"response: {response}")
+        if response.success:
+            response.success = self.wait_finish()
         return response
 
     def check_tank_status_callback(self, request, response):
@@ -226,6 +241,26 @@ class PlatformCommunicationNode(Node):
             self.get_logger().error(f"error: {str(e)}")
             response.success = False
         return response
+    # ---------------------------------------------------------------------------- #
+    #                                   function                                   #
+    # ---------------------------------------------------------------------------- #
+    def check_finish_status(self):
+        try:
+            result = self.client.read_coils(self.finish_status_addr, 1)
+            if result.isError():
+                self.get_logger().error("ModbusIOException")
+                return False
+            return result.bits[0]
+        except Exception as e:
+            self.get_logger().error(f"error: {str(e)}")
+            return False
+    def wait_finish(self, timeout=10):
+        start_time = rclpy.clock.Clock().now()
+        while rclpy.clock.Clock().now() - start_time < rclpy.time.Duration(seconds=timeout):
+            if self.check_finish_status():
+                return True
+            time.sleep(0.1)
+        return False
 
 
 def main(args=None):
