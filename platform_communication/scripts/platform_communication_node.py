@@ -158,7 +158,7 @@ class PlatformCommunicationNode(Node):
         response.success = True
         try:
             result = self.client.write_coil(
-                self.moveto_extinguisher_addr + request.num -1, request.num, unit=self.UNIT
+                self.moveto_extinguisher_addr + request.num -1, True, unit=self.UNIT
             )
             if result.isError():
                 response.success = False
@@ -254,12 +254,13 @@ class PlatformCommunicationNode(Node):
         except Exception as e:
             self.get_logger().error(f"error: {str(e)}")
             return False
-    def wait_finish(self, timeout=10):
+    def wait_finish(self, timeout=20):
         start_time = rclpy.clock.Clock().now()
         while rclpy.clock.Clock().now() - start_time < rclpy.time.Duration(seconds=timeout):
             if self.check_finish_status():
                 return True
             time.sleep(0.1)
+        self.get_logger().info('wait platform status is timeout')
         return False
 
 

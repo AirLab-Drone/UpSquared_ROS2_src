@@ -40,6 +40,8 @@ class Mission:
     PLATFORM_ALIGN_MODE = 7
     CHARGE_MODE = 8
     END_CHARE_MODE = 9
+    PREPARE_TAKEOFF_MODE = 10
+    RECOVER_PAYLOAD_MODE = 11
 
     # define control parameter
     LIMIT_SEALING_RANGE = 0.8  # 距離天花板的最小距離
@@ -97,37 +99,37 @@ class Mission:
             ):
                 self.node.get_logger().info("service not available, waiting again...")
             # platform service client
-            self.alignment_rod_client = self.create_client(
+            self.alignment_rod_client = self.node.create_client(
                 AlignmentRod, "platform_communication/alignment_rod"
             )
             while not self.alignment_rod_client.wait_for_service(timeout_sec=1.0):
                 self.get_logger().info("service not available, waiting again...")
-            self.perforated_plate_client = self.create_client(
+            self.perforated_plate_client = self.node.create_client(
                 PerforatedPlate, "platform_communication/perforated_plate"
             )
             while not self.perforated_plate_client.wait_for_service(timeout_sec=1.0):
                 self.get_logger().info("service not available, waiting again...")
-            self.moveto_charge_tank_client = self.create_client(
+            self.moveto_charge_tank_client = self.node.create_client(
                 MovetoChargeTank, "platform_communication/moveto_charge_tank"
             )
             while not self.moveto_charge_tank_client.wait_for_service(timeout_sec=1.0):
                 self.get_logger().info("service not available, waiting again...")
-            self.moveto_extinguisher_client = self.create_client(
+            self.moveto_extinguisher_client = self.node.create_client(
                 MovetoExtinguisher, "platform_communication/moveto_extinguisher"
             )
             while not self.moveto_extinguisher_client.wait_for_service(timeout_sec=1.0):
                 self.get_logger().info("service not available, waiting again...")
-            self.vertical_slider_client = self.create_client(
+            self.vertical_slider_client = self.node.create_client(
                 VerticalSlider, "platform_communication/vertical_slider"
             )
             while not self.vertical_slider_client.wait_for_service(timeout_sec=1.0):
                 self.get_logger().info("service not available, waiting again...")
-            self.mains_power_client = self.create_client(
+            self.mains_power_client = self.node.create_client(
                 MainsPower, "platform_communication/mains_power"
             )
             while not self.mains_power_client.wait_for_service(timeout_sec=1.0):
                 self.get_logger().info("service not available, waiting again...")
-            self.check_tank_status_client = self.create_client(
+            self.check_tank_status_client = self.node.create_client(
                 CheckTankStatus, "platform_communication/check_tank_status"
             )
             while not self.check_tank_status_client.wait_for_service(timeout_sec=1.0):
@@ -166,6 +168,8 @@ class Mission:
             self.PLATFORM_ALIGN_MODE,
             self.CHARGE_MODE,
             self.END_CHARE_MODE,
+            self.PREPARE_TAKEOFF_MODE,
+            self.RECOVER_PAYLOAD_MODE,
         ]:
             self.node.get_logger().error("not a valid mode")
             return False
@@ -178,6 +182,7 @@ class Mission:
     def __call_service_and_wait(self, client, request, timeout_sec=20):
         future = client.call_async(request)
         self.node.executor.spin_until_future_complete(future, timeout_sec=timeout_sec)
+        self.node.get_logger().info(f"call service result: {future.result()}")
         return future.result()
 
     # ---------------------------------------------------------------------------- #
@@ -629,7 +634,7 @@ class Mission:
                 "fire distinguish-----------------------------------------------"
             )
             result = self.__call_service_and_wait(
-                self.fire_extinguisher_spry_client, Spry.Request()
+                self.fire_extinguisher_spry_client, Spry.Request(spry=True)
             )
             if result is None:
                 is_success = False
@@ -683,7 +688,11 @@ class Mission:
             self.stopMission()
             return False
         # 回收payload
+        self.node.get_logger().info("start reload")
+        self.__setMode(self.WAIT_MODE)
         result = self.recoverPayload()
+        self.__setMode(self.LOADING_EXTINGUISHER_MODE)
+        self.node.get_logger().info(f"reload result: {result}")
         if not result:
             self.stopMission()
             return False
@@ -713,6 +722,8 @@ class Mission:
             self.stopMission()
             return False
         extinguisher_num = result.num + 1  # 裝填下一個滅火器
+        if extinguisher_num == -1 or extinguisher_num == 0:
+            extinguisher_num = 1
         # 移動滅火器位置
         result = self.__call_service_and_wait(
             self.moveto_extinguisher_client,
@@ -728,13 +739,13 @@ class Mission:
         if result is None or not result.success:
             self.stopMission()
             return False
-        # 接點確認
-        result = self.__call_service_and_wait(
-            self.check_fire_extinguisher_client, CheckPayload.Request()
-        )
-        if result is None or not result.success:
-            self.stopMission()
-            return False
+        # # 接點確認
+        # result = self.__call_service_and_wait(
+        #     self.check_fire_extinguisher_client, CheckPayload.Request()
+        # )
+        # if result is None or not result.success:
+        #     self.stopMission()
+        #     return False
         # 磁鐵吸
         result = self.__call_service_and_wait(
             self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
@@ -799,7 +810,7 @@ class Mission:
             return False
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
-        return True 
+        return True
 
     def prepareLanding(self):
         """
@@ -852,11 +863,11 @@ class Mission:
         if self.mode != self.WAIT_MODE:
             self.stopMission()
             return False
-        self.__setMode(self.PLATFORM_ALIGN_MODE_MODE)
+        self.__setMode(self.PLATFORM_ALIGN_MODE)
         # --------------------------------- variable --------------------------------- #
         # ----------------------------------- 開始任務 ----------------------------------- #
-        if self.mode != self.PLATFORM_ALIGN_MODE_MODE:
-            self.node.get_logger().info("It's not in PREPARE_LANDING_MODE")
+        if self.mode != self.PLATFORM_ALIGN_MODE:
+            self.node.get_logger().info("It's not in PLATFORM_ALIGN_MODE")
             self.stopMission()
             return False
         # 關閉對齊桿
@@ -868,7 +879,7 @@ class Mission:
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
         return True
-    
+
     def recoverPayload(self):
         """
         恢復payload功能。將payload收回。
@@ -892,6 +903,11 @@ class Mission:
             self.vertical_slider_client, VerticalSlider.Request(up=True)
         )
         if result is None or not result.success:
+            self.node.get_logger().info("vertical slider up faild")
+            if result is None:
+                self.node.get_logger().info("result is none")
+            else:
+                self.node.get_logger().info(f"vertical result: {result.success}")
             self.stopMission()
             return False
         # 磁鐵放
@@ -901,6 +917,7 @@ class Mission:
         if result is None or not result.success:
             self.stopMission()
             return False
+        time.sleep(1)
         # 降下抬桿
         result = self.__call_service_and_wait(
             self.vertical_slider_client, VerticalSlider.Request(up=False)
@@ -926,7 +943,7 @@ class Mission:
         # --------------------------------- variable --------------------------------- #
         # ----------------------------------- 開始任務 ----------------------------------- #
         if self.mode != self.CHARGE_MODE:
-            self.node.get_logger().info("It's not in LOADING_EXTINGUISHER_MODE")
+            self.node.get_logger().info("It's not in CHARGE_MODE")
             self.stopMission()
             return False
         # 降下抬桿
@@ -951,7 +968,9 @@ class Mission:
             self.stopMission()
             return False
         # 回收payload
+        self.__setMode(self.WAIT_MODE)
         result = self.recoverPayload()
+        self.__setMode(self.CHARGE_MODE)
         if not result:
             self.stopMission()
             return False
@@ -1024,7 +1043,7 @@ class Mission:
         # --------------------------------- variable --------------------------------- #
         # ----------------------------------- 開始任務 ----------------------------------- #
         if self.mode != self.END_CHARE_MODE:
-            self.node.get_logger().info("It's not in template mode")
+            self.node.get_logger().info("It's not in END_CHARE_MODE")
             self.stopMission()
             return False
         # 平台48V關閉

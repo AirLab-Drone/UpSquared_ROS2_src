@@ -36,6 +36,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   srv/Spry.srv
   srv/CheckPayload.srv
   srv/HoldPayload.srv
+  srv/CheckBatteryConnect.srv
   DEPENDENCIES std_msgs
 )
 
