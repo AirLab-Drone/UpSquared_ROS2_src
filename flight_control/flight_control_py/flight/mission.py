@@ -682,6 +682,11 @@ class Mission:
         if result is None or not result.success:
             self.stopMission()
             return False
+        # 回收payload
+        result = self.recoverPayload()
+        if not result:
+            self.stopMission()
+            return False
         # 磁鐵放
         result = self.__call_service_and_wait(
             self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
@@ -737,6 +742,54 @@ class Mission:
         if result is None or not result.success:
             self.stopMission()
             return False
+        # 接點確認
+        result = self.__call_service_and_wait(
+            self.check_fire_extinguisher_client, CheckPayload.Request()
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 降下抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+
+    def prepareTakeoff(self):
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.PREPARE_TAKEOFF_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.PREPARE_TAKEOFF_MODE:
+            self.node.get_logger().info("It's not in template mode")
+            self.stopMission()
+            return False
+        # 磁鐵吸
+        result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
+        )
+        # 確認接點
+        result = self.__call_service_and_wait(
+            self.check_fire_extinguisher_client, CheckPayload.Request()
+        )
+        if result is None or not result.success:
+            # 重新裝滅火器
+            result = self.loadingExtinguisher()
+            if not result:
+                self.stopMission()
+                return False
+        # 降下抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
+        )
         # 打開對齊桿
         result = self.__call_service_and_wait(
             self.alignment_rod_client, AlignmentRod.Request(open=True)
@@ -746,7 +799,7 @@ class Mission:
             return False
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
-        return True
+        return True 
 
     def prepareLanding(self):
         """
@@ -766,19 +819,24 @@ class Mission:
             self.node.get_logger().info("It's not in PREPARE_LANDING_MODE")
             self.stopMission()
             return False
+        # 降下抬桿
         result = self.__call_service_and_wait(
-            self.alignment_rod_client, AlignmentRod.Request(open=True)
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
         )
         if result is None or not result.success:
             self.stopMission()
             return False
-
+        # 關閉開孔板
         result = self.__call_service_and_wait(
             self.perforated_plate_client, PerforatedPlate.Request(open=False)
         )
         if result is None or not result.success:
             self.stopMission()
             return False
+        # 打開對齊夾
+        result = self.__call_service_and_wait(
+            self.alignment_rod_client, AlignmentRod.Request(open=True)
+        )
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
         return True
@@ -801,10 +859,54 @@ class Mission:
             self.node.get_logger().info("It's not in PREPARE_LANDING_MODE")
             self.stopMission()
             return False
+        # 關閉對齊桿
         result = self.__call_service_and_wait(
             self.alignment_rod_client, AlignmentRod.Request(open=False)
         )
         if result is None or not result.success:
+            return False
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+    
+    def recoverPayload(self):
+        """
+        恢復payload功能。將payload收回。
+        Returns:
+            bool: 如果任務成功完成，返回 True，否則返回 False。
+        """
+
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.RECOVER_PAYLOAD_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.RECOVER_PAYLOAD_MODE:
+            self.node.get_logger().info("It's not in RECOVER_PAYLOAD_MODE")
+            self.stopMission()
+            return False
+        # 升起抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=True)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 磁鐵放
+        result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 降下抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
             return False
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
@@ -846,6 +948,11 @@ class Mission:
             self.perforated_plate_client, PerforatedPlate.Request(open=True)
         )
         if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 回收payload
+        result = self.recoverPayload()
+        if not result:
             self.stopMission()
             return False
         # 磁鐵放

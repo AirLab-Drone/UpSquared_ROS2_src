@@ -77,7 +77,7 @@ class PlatformCommunicationNode(Node):
         self.open_mains_power_addr = 1512
         self.close_mains_power_addr = 1513
         self.check_tank_status_addr = 1600
-        self.finish_status_addr = 0x00 # todo mortify finish status address
+        self.finish_status_addr = 1620
         # check connection
         while not self.client.connect():
             self.get_logger().info("connecting...")
