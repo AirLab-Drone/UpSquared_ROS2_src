@@ -175,7 +175,7 @@ class Mission:
         self.__setMode(self.WAIT_MODE)
         self.controller.setZeroVelocity()
 
-    def __call_service_and_wait(self, client, request, timeout_sec=4):
+    def __call_service_and_wait(self, client, request, timeout_sec=20):
         future = client.call_async(request)
         self.node.executor.spin_until_future_complete(future, timeout_sec=timeout_sec)
         return future.result()
