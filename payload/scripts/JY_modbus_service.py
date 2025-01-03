@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import rclpy
 from rclpy.node import Node
-from payload.srv import Spry, HoldPayload, CheckPayload
+from payload.srv import Spry, HoldPayload, CheckPayload, CheckBatteryConnect
 import time
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 from pymodbus.exceptions import ModbusIOException
@@ -23,6 +23,11 @@ class FireExtinguisher_JYModbus(Node):
             "/fire_extinguisher_jy_modbus/check_fire_extinguisher",
             self.check_fire_extinguisher,
         )
+        self.srv = self.create_service(
+            CheckBatteryConnect,
+            "/fire_extinguisher_jy_modbus/check_battery_connect",
+            self.check_fire_extinguisher,
+        )
         # ------------------------------ io pin setup ------------------------------ #
         self.UNIT = 0x01
         self.client = ModbusClient(
@@ -36,6 +41,7 @@ class FireExtinguisher_JYModbus(Node):
         self.spry_pin = 0x0000
         self.hold_pin = 0x0001
         self.check_read_pin = 0x0000
+        self.check_battery_connect_pin = 0x0001
         while not self.client.connect():
             self.get_logger().info("connecting...")
             time.sleep(0.5)
@@ -43,17 +49,26 @@ class FireExtinguisher_JYModbus(Node):
     def spry_callback(self, request, response):
         self.get_logger().info("fire extinguisher service is called")
         response.success = True
-        try:
-            result = self.client.write_coil(self.spry_pin, True, unit=self.UNIT)
-            if result.isError():
+        if request.spry:
+            try:
+                result = self.client.write_coil(self.spry_pin, True, unit=self.UNIT)
+                if result.isError():
+                    response.success = False
+                time.sleep(2)
+                result = self.client.write_coil(self.spry_pin, False, unit=self.UNIT)
+                if result.isError():
+                    response.success = False
+            except Exception as e:
+                self.get_logger().error(f"error: {str(e)}")
                 response.success = False
-            time.sleep(2)
-            result = self.client.write_coil(self.spry_pin, False, unit=self.UNIT)
-            if result.isError():
+        else:
+            try:
+                result = self.client.write_coil(self.spry_pin, False, unit=self.UNIT)
+                if result.isError():
+                    response.success = False
+            except Exception as e:
+                self.get_logger().error(f"error: {str(e)}")
                 response.success = False
-        except Exception as e:
-            self.get_logger().error(f"error: {str(e)}")
-            response.success = False
         self.get_logger().info(f"response: {response}")
         return response
 
@@ -73,6 +88,20 @@ class FireExtinguisher_JYModbus(Node):
         self.get_logger().info("check_fire_extinguisher service is called")
         try:
             result = self.client.read_discrete_inputs(self.check_read_pin, 1, unit=self.UNIT)
+            if result.isError():
+                self.get_logger().error("ModbusIOException")
+                response.success = False
+                return response
+            self.get_logger().info(str(result.bits))
+            response.success = result.bits[0]
+        except Exception as e:
+            self.get_logger().error(f"error: {str(e)}")
+            response.success = False
+        return response
+    def check_battery_connect(self, request, response):
+        self.get_logger().info("check battery connect service is called")
+        try:
+            result = self.client.read_discrete_inputs(self.check_battery_connect_pin, 1, unit=self.UNIT)
             if result.isError():
                 self.get_logger().error("ModbusIOException")
                 response.success = False

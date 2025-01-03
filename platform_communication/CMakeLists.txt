@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(payload)
+project(platform_communication)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -12,31 +12,32 @@ find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
+add_executable(hello src/hello.cpp)
+target_include_directories(hello PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(hello PUBLIC c_std_99 cxx_std_17) # Require C99 and C++17
+install(TARGETS hello
+  DESTINATION lib/${PROJECT_NAME})
 
-include_directories(include)
-# Create Cpp executable
-add_executable(cpp_executable src/cpp_node.cpp)
-ament_target_dependencies(cpp_executable rclcpp)
-# Install Cpp executables
-install(TARGETS
-  cpp_executable
-  DESTINATION lib/${PROJECT_NAME}
-)
 # Install Python modules
 ament_python_install_package(${PROJECT_NAME}_py)
 # Install Python executables
 file(GLOB SCRIPTS "scripts/*.py")
-message(STATUS "Looking for scripts in ${CMAKE_CURRENT_SOURCE_DIR}/scripts")
+
 install(PROGRAMS
   ${SCRIPTS}
   DESTINATION lib/${PROJECT_NAME}
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  srv/Spry.srv
-  srv/CheckPayload.srv
-  srv/HoldPayload.srv
-  srv/CheckBatteryConnect.srv
+  srv/AlignmentRod.srv
+  srv/MainsPower.srv
+  srv/MovetoChargeTank.srv
+  srv/MovetoExtinguisher.srv
+  srv/PerforatedPlate.srv
+  srv/VerticalSlider.srv
+  srv/CheckTankStatus.srv
   DEPENDENCIES std_msgs
 )
 

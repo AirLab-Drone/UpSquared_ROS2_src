@@ -11,7 +11,16 @@ import time
 import yaml
 from std_msgs.msg import Int32MultiArray, Float32
 from thermal_msgs.msg import ThermalAlert
-from payload.srv import Spry
+from payload.srv import Spry, HoldPayload, CheckPayload
+from platform_communication.srv import (
+    AlignmentRod,
+    PerforatedPlate,
+    MovetoChargeTank,
+    MovetoExtinguisher,
+    VerticalSlider,
+    MainsPower,
+    CheckTankStatus,
+)
 
 
 class Mission:
@@ -26,6 +35,14 @@ class Mission:
     LANDING_ON_PLATFORM_MODE = 2
     NAVIGATION_MODE = 3
     FIRE_DISTINGUISH_MODE = 4
+    LOADING_EXTINGUISHER_MODE = 5
+    PREPARE_LANDING_MODE = 6
+    PLATFORM_ALIGN_MODE = 7
+    CHARGE_MODE = 8
+    END_CHARE_MODE = 9
+    PREPARE_TAKEOFF_MODE = 10
+    RECOVER_PAYLOAD_MODE = 11
+
     # define control parameter
     LIMIT_SEALING_RANGE = 0.8  # 距離天花板的最小距離
     LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
@@ -59,11 +76,65 @@ class Mission:
         )
         # ------------------------------ service client ------------------------------ #
         if not self.node.get_parameter("simulation").get_parameter_value().bool_value:
-            self.fire_extinguisher_spry_client = self.node.create_client(Spry, "/spry")
+            # payload service client
+            self.fire_extinguisher_spry_client = self.node.create_client(
+                Spry, "/fire_extinguisher_jy_modbus/spry"
+            )
             while not self.fire_extinguisher_spry_client.wait_for_service(
                 timeout_sec=1.0
             ):
                 self.node.get_logger().info("service not available, waiting again...")
+            self.hold_fire_extinguisher_client = self.node.create_client(
+                HoldPayload, "/fire_extinguisher_jy_modbus/hold_fire_extinguisher"
+            )
+            while not self.hold_fire_extinguisher_client.wait_for_service(
+                timeout_sec=1.0
+            ):
+                self.node.get_logger().info("service not available, waiting again...")
+            self.check_fire_extinguisher_client = self.node.create_client(
+                CheckPayload, "/fire_extinguisher_jy_modbus/check_fire_extinguisher"
+            )
+            while not self.check_fire_extinguisher_client.wait_for_service(
+                timeout_sec=1.0
+            ):
+                self.node.get_logger().info("service not available, waiting again...")
+            # platform service client
+            self.alignment_rod_client = self.node.create_client(
+                AlignmentRod, "platform_communication/alignment_rod"
+            )
+            while not self.alignment_rod_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+            self.perforated_plate_client = self.node.create_client(
+                PerforatedPlate, "platform_communication/perforated_plate"
+            )
+            while not self.perforated_plate_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+            self.moveto_charge_tank_client = self.node.create_client(
+                MovetoChargeTank, "platform_communication/moveto_charge_tank"
+            )
+            while not self.moveto_charge_tank_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+            self.moveto_extinguisher_client = self.node.create_client(
+                MovetoExtinguisher, "platform_communication/moveto_extinguisher"
+            )
+            while not self.moveto_extinguisher_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+            self.vertical_slider_client = self.node.create_client(
+                VerticalSlider, "platform_communication/vertical_slider"
+            )
+            while not self.vertical_slider_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+            self.mains_power_client = self.node.create_client(
+                MainsPower, "platform_communication/mains_power"
+            )
+            while not self.mains_power_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+            self.check_tank_status_client = self.node.create_client(
+                CheckTankStatus, "platform_communication/check_tank_status"
+            )
+            while not self.check_tank_status_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info("service not available, waiting again...")
+
         # ---------------------------- aruco marker config --------------------------- #
         self.markers_config = get_yaml_config("aruco_detect", "aruco_markers.yaml")[
             "aruco_markers"
@@ -92,6 +163,13 @@ class Mission:
             self.LANDING_ON_PLATFORM_MODE,
             self.NAVIGATION_MODE,
             self.FIRE_DISTINGUISH_MODE,
+            self.LOADING_EXTINGUISHER_MODE,
+            self.PREPARE_LANDING_MODE,
+            self.PLATFORM_ALIGN_MODE,
+            self.CHARGE_MODE,
+            self.END_CHARE_MODE,
+            self.PREPARE_TAKEOFF_MODE,
+            self.RECOVER_PAYLOAD_MODE,
         ]:
             self.node.get_logger().error("not a valid mode")
             return False
@@ -100,6 +178,12 @@ class Mission:
     def stopMission(self):
         self.__setMode(self.WAIT_MODE)
         self.controller.setZeroVelocity()
+
+    def __call_service_and_wait(self, client, request, timeout_sec=20):
+        future = client.call_async(request)
+        self.node.executor.spin_until_future_complete(future, timeout_sec=timeout_sec)
+        self.node.get_logger().info(f"call service result: {future.result()}")
+        return future.result()
 
     # ---------------------------------------------------------------------------- #
     #                                    Mission                                   #
@@ -121,6 +205,16 @@ class Mission:
     #     return True
 
     def simpleTakeoff(self, target_hight=2):
+        """
+        簡單起飛函式。
+        此函式會檢查飛行器的當前模式是否為等待模式，並嘗試讓飛行器起飛到目標高度。
+        如果飛行器離天花板太近或離地面太近，則會調整目標高度或禁止起飛。
+        Parameters:
+        target_hight (float): 目標高度，預設為2米。
+        Returns:
+        bool: 起飛成功返回True，否則返回False。
+        """
+
         LIMIT_SEALING_RANGE = self.LIMIT_SEALING_RANGE
         LOWEST_HEIGHT = self.LOWEST_HEIGHT
         count = 0
@@ -160,6 +254,12 @@ class Mission:
         return True
 
     def simpleLanding(self):
+        """
+        執行最原始的降落方式，並檢查是否解除飛行模式。
+        Returns:
+            bool: 如果降落成功，返回 True。
+        """
+
         while not self.controller.land():
             print("landing")
         while self.flight_info.state.armed:
@@ -318,7 +418,7 @@ class Mission:
         self,
         destination_x: float,
         destination_y: float,
-        destination_z: float = 2,
+        destination_z: float = 2.5,
     ):
         """
         Function to navigate the drone to a specified location.
@@ -341,10 +441,10 @@ class Mission:
         self.__setMode(self.NAVIGATION_MODE)
         # --------------------------------- variable --------------------------------- #
         LIMIT_SEALING_RANGE = self.LIMIT_SEALING_RANGE
-        LOWEST_HEIGHT = self.LOWEST_HEIGHT
         MAX_SPEED = self.MAX_SPEED
         MAX_YAW = self.MAX_YAW
         MAX_VERTICAL_SPEED = self.MAX_VERTICAL_SPEED
+        NAV_LOWEST_HEIGHT = self.LOWEST_HEIGHT
         bcn_orient_yaw = (
             self.node.get_parameter("bcn_orient_yaw").get_parameter_value().double_value
         )
@@ -359,12 +459,12 @@ class Mission:
             up_distance = self.flight_info.rangefinder2_range
             down_distance = self.flight_info.rangefinder_alt
             vertical_space = up_distance + down_distance
-            if vertical_space < LIMIT_SEALING_RANGE + LOWEST_HEIGHT:
+            if vertical_space < LIMIT_SEALING_RANGE + NAV_LOWEST_HEIGHT:
                 return 0
             if vertical_space < destination_z + LIMIT_SEALING_RANGE:
                 target_high = (
-                    vertical_space - LIMIT_SEALING_RANGE - LOWEST_HEIGHT
-                ) / 2 + LOWEST_HEIGHT
+                    vertical_space - LIMIT_SEALING_RANGE - NAV_LOWEST_HEIGHT
+                ) / 2 + NAV_LOWEST_HEIGHT
                 return target_high - current_high
             if vertical_space > destination_z + LIMIT_SEALING_RANGE:
                 return destination_z - current_high
@@ -391,7 +491,7 @@ class Mission:
             # 高度空間不足就停止
             if (
                 self.flight_info.rangefinder_alt + self.flight_info.rangefinder2_range
-                < LIMIT_SEALING_RANGE + LOWEST_HEIGHT
+                < LIMIT_SEALING_RANGE + NAV_LOWEST_HEIGHT
             ):
                 self.stopMission()
                 self.node.get_logger().error("not enough space to navigate")
@@ -429,6 +529,13 @@ class Mission:
         return True
 
     def fireDistinguish(self):
+        """
+        執行滅火任務。
+        此方法會先檢查模式是否為等待模式，然後進行螺旋搜尋火源，找到火源後進行滅火操作。
+        Returns:
+            bool: 滅火任務是否成功。
+        """
+
         # 檢查先前模式是否為等待模式，定且設定目前模式為降落至平台模式
         if self.mode != self.WAIT_MODE:
             self.stopMission()
@@ -446,7 +553,7 @@ class Mission:
         # ----------------------------------- 尋找火源 ----------------------------------- #
         # 螺旋尋找火源
         omega = 2 * math.pi / 10  # 每十秒繞一圈的角速度
-        k = 0.3 / (2* math.pi)  # 螺旋擴展速率，每秒擴展0.3m
+        k = 0.3 / (2 * math.pi)  # 螺旋擴展速率，每秒擴展0.3m
         angle = 0
         max_radius = 1.0  # 當半徑到1.5時停止飛行
         start_time = rclpy.clock.Clock().now()
@@ -526,12 +633,13 @@ class Mission:
             self.node.get_logger().info(
                 "fire distinguish-----------------------------------------------"
             )
-            spry_future = self.fire_extinguisher_spry_client.call_async(Spry.Request())
-            self.node.executor.spin_until_future_complete(spry_future, timeout_sec=4)
-            if spry_future.result() is None:
+            result = self.__call_service_and_wait(
+                self.fire_extinguisher_spry_client, Spry.Request(spry=True)
+            )
+            if result is None:
                 is_success = False
             else:
-                is_success = spry_future.result().success
+                is_success = result.success
         else:
             time.sleep(2)
             is_success = True
@@ -540,3 +648,432 @@ class Mission:
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
         return is_success
+
+    def loadingExtinguisher(self):
+        """
+        此函數會檢查現在的料筒是在哪個位置，並移動到填充下一個位置的料筒。
+        在滅火的過程中，料筒不會歸位，所以可以用現在料筒位置判斷下一個料筒的位置，當料筒位置在2時表示沒有料筒了。
+        @ return: bool 是否成功裝填滅火器
+        """
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.LOADING_EXTINGUISHER_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.LOADING_EXTINGUISHER_MODE:
+            self.node.get_logger().info("It's not in LOADING_EXTINGUISHER_MODE")
+            self.stopMission()
+            return False
+        # 降下抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 合起對齊桿
+        result = self.__call_service_and_wait(
+            self.alignment_rod_client, AlignmentRod.Request(open=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 打開開孔板
+        result = self.__call_service_and_wait(
+            self.perforated_plate_client, PerforatedPlate.Request(open=True)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 回收payload
+        self.node.get_logger().info("start reload")
+        self.__setMode(self.WAIT_MODE)
+        result = self.recoverPayload()
+        self.__setMode(self.LOADING_EXTINGUISHER_MODE)
+        self.node.get_logger().info(f"reload result: {result}")
+        if not result:
+            self.stopMission()
+            return False
+        # 磁鐵放
+        result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 噴灑關閉
+        result = self.__call_service_and_wait(
+            self.fire_extinguisher_spry_client, Spry.Request(spry=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 讀取滅火器位置
+        result = self.__call_service_and_wait(
+            self.check_tank_status_client, CheckTankStatus.Request()
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        if result.num >= 2:  # 滅火器數量2個，位置在2的時候表示沒有滅火器了
+            self.node.get_logger().info("fire extinguisher is empty")
+            self.stopMission()
+            return False
+        extinguisher_num = result.num + 1  # 裝填下一個滅火器
+        if extinguisher_num == -1 or extinguisher_num == 0:
+            extinguisher_num = 1
+        # 移動滅火器位置
+        result = self.__call_service_and_wait(
+            self.moveto_extinguisher_client,
+            MovetoExtinguisher.Request(num=extinguisher_num),
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 上升抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=True)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # # 接點確認
+        # result = self.__call_service_and_wait(
+        #     self.check_fire_extinguisher_client, CheckPayload.Request()
+        # )
+        # if result is None or not result.success:
+        #     self.stopMission()
+        #     return False
+        # 磁鐵吸
+        result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 接點確認
+        result = self.__call_service_and_wait(
+            self.check_fire_extinguisher_client, CheckPayload.Request()
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 降下抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+
+    def prepareTakeoff(self):
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.PREPARE_TAKEOFF_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.PREPARE_TAKEOFF_MODE:
+            self.node.get_logger().info("It's not in template mode")
+            self.stopMission()
+            return False
+        # 磁鐵吸
+        result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
+        )
+        # 確認接點
+        result = self.__call_service_and_wait(
+            self.check_fire_extinguisher_client, CheckPayload.Request()
+        )
+        if result is None or not result.success:
+            # 重新裝滅火器
+            result = self.loadingExtinguisher()
+            if not result:
+                self.stopMission()
+                return False
+        # 降下抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
+        )
+        # 打開對齊桿
+        result = self.__call_service_and_wait(
+            self.alignment_rod_client, AlignmentRod.Request(open=True)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+
+    def prepareLanding(self):
+        """
+        準備降落任務，將平台設置成可供無人機降落的狀態。
+        返回:
+            bool: 如果降落準備成功，返回 True，否則返回 False。
+        """
+
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.PREPARE_LANDING_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.PREPARE_LANDING_MODE:
+            self.node.get_logger().info("It's not in PREPARE_LANDING_MODE")
+            self.stopMission()
+            return False
+        # 降下抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 關閉開孔板
+        result = self.__call_service_and_wait(
+            self.perforated_plate_client, PerforatedPlate.Request(open=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 打開對齊夾
+        result = self.__call_service_and_wait(
+            self.alignment_rod_client, AlignmentRod.Request(open=True)
+        )
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+
+    def platformAlignment(self):
+        """
+        平台對準功能。將無人機對齊到平台中心。
+        Returns:
+            bool: 如果任務成功完成，返回 True，否則返回 False。
+        """
+
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.PLATFORM_ALIGN_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.PLATFORM_ALIGN_MODE:
+            self.node.get_logger().info("It's not in PLATFORM_ALIGN_MODE")
+            self.stopMission()
+            return False
+        # 關閉對齊桿
+        result = self.__call_service_and_wait(
+            self.alignment_rod_client, AlignmentRod.Request(open=False)
+        )
+        if result is None or not result.success:
+            return False
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+
+    def recoverPayload(self):
+        """
+        恢復payload功能。將payload收回。
+        Returns:
+            bool: 如果任務成功完成，返回 True，否則返回 False。
+        """
+
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.RECOVER_PAYLOAD_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.RECOVER_PAYLOAD_MODE:
+            self.node.get_logger().info("It's not in RECOVER_PAYLOAD_MODE")
+            self.stopMission()
+            return False
+        # 升起抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=True)
+        )
+        if result is None or not result.success:
+            self.node.get_logger().info("vertical slider up faild")
+            if result is None:
+                self.node.get_logger().info("result is none")
+            else:
+                self.node.get_logger().info(f"vertical result: {result.success}")
+            self.stopMission()
+            return False
+        # 磁鐵放
+        result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        time.sleep(1)
+        # 降下抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+
+    def charge(self):
+        """
+        此函數會檢查現在的料筒是在哪個位置，並移動到填充下一個位置的料筒。
+        在滅火的過程中，料筒不會歸位，所以可以用現在料筒位置判斷下一個料筒的位置，當料筒位置在2時表示沒有料筒了。
+        @ return: bool 是否成功裝填滅火器
+        """
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.CHARGE_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.CHARGE_MODE:
+            self.node.get_logger().info("It's not in CHARGE_MODE")
+            self.stopMission()
+            return False
+        # 降下抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 合起對齊桿
+        result = self.__call_service_and_wait(
+            self.alignment_rod_client, AlignmentRod.Request(open=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 打開開孔板
+        result = self.__call_service_and_wait(
+            self.perforated_plate_client, PerforatedPlate.Request(open=True)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 回收payload
+        self.__setMode(self.WAIT_MODE)
+        result = self.recoverPayload()
+        self.__setMode(self.CHARGE_MODE)
+        if not result:
+            self.stopMission()
+            return False
+        # 磁鐵放
+        result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 噴灑關閉
+        result = self.__call_service_and_wait(
+            self.fire_extinguisher_spry_client, Spry.Request(spry=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 平台48V關閉
+        result = self.__call_service_and_wait(
+            self.mains_power_client, MainsPower.Request(open=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 移至充電位置
+        result = self.__call_service_and_wait(
+            self.moveto_charge_tank_client, MovetoChargeTank.Request(open=True)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 上升抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=True)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 接點確認
+        result = self.__call_service_and_wait(
+            self.check_fire_extinguisher_client, CheckPayload.Request()
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 磁鐵吸
+        result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 平台48V開啟
+        result = self.__call_service_and_wait(
+            self.mains_power_client, MainsPower.Request(open=True)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+
+    def endCharge(self):
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.END_CHARE_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.END_CHARE_MODE:
+            self.node.get_logger().info("It's not in END_CHARE_MODE")
+            self.stopMission()
+            return False
+        # 平台48V關閉
+        result = self.__call_service_and_wait(
+            self.mains_power_client, MainsPower.Request(open=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 磁鐵放
+        result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 降下抬桿
+        result = self.__call_service_and_wait(
+            self.vertical_slider_client, VerticalSlider.Request(up=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # 磁鐵吸
+        result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True

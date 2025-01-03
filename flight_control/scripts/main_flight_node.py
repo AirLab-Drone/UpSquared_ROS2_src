@@ -30,6 +30,7 @@ class MainFlightNode(Node):
         self.controller = FlightControl(self)
         self.flight_info = FlightInfo(self)
         self.mission = Mission(self.controller, self.flight_info, self)
+        # -------------------------------- subscriber -------------------------------- #
         # 接收火源警報
         self.create_subscription(
             ThermalAlert,
@@ -37,7 +38,6 @@ class MainFlightNode(Node):
             self.thermalAlertCallback,
             rclpy.qos.qos_profile_sensor_data,
         )
-
         # --------------------------------- 控制飛行流程偵測器 -------------------------------- #
         self.flow_thread = threading.Thread()  # 建立空執行緒
         self.flow_mode = self.STOP_FLOW  # 暫時使用的流程模式
@@ -100,23 +100,8 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        if not self.controller.setMode():
-            self.get_logger().info("setMode fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        time.sleep(4)
-        self.get_logger().info("takeoff")
-        if not self.mission.simpleTakeoff():
-            self.get_logger().info("takeoff fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info("fire distinguish")
-        if not self.mission.fireDistinguish():
-            self.get_logger().info("fire distinguish fail")
-            # self.flow_mode = self.STOP_FLOW
-            # return
-        if not self.mission.simpleLanding():
-            self.get_logger().info("fire distinguish fail")
+        if not self.mission.loadingExtinguisher():
+            self.get_logger().info("load extinguish fail")
             self.flow_mode = self.STOP_FLOW
             return
         self.flow_mode = self.STOP_FLOW
@@ -126,46 +111,59 @@ class MainFlightNode(Node):
         滅火流程
         起飛 --> 飛到指定位置 --> 飛回原點 --> 降落
         """
-        if not self.controller.setMode():
-            self.get_logger().info("setMode fail")
+        try:
+            if not self.controller.setMode():
+                self.get_logger().info("setMode fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            time.sleep(4)
+            self.get_logger().info("loading extinguisher")
+            if not self.mission.loadingExtinguisher():
+                self.get_logger().info("loading extinguisher fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            self.get_logger().info("takeoff")
+            if not self.mission.simpleTakeoff():
+                self.get_logger().info("takeoff fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            self.get_logger().info("navigateTo fire")
+            if not self.mission.navigateTo(
+                self.thermal_alert_msg.x, self.thermal_alert_msg.y, 3
+            ):
+                self.get_logger().info("navigateTo fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            self.get_logger().info("fire distinguish")
+            if not self.mission.fireDistinguish():
+                self.get_logger().info("fire distinguish fail")
+                # self.flow_mode = self.STOP_FLOW
+                # return
+            self.get_logger().info("navigateTo home")
+            if not self.mission.navigateTo(6.87, 0.84, 2.5):
+                self.get_logger().info("navigateTo fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            self.get_logger().info("prepare landing")
+            if not self.mission.prepareLanding():
+                self.get_logger().info("prepareLanding fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            self.get_logger().info("landedOnPlatform")
+            if not self.mission.landedOnPlatform():
+                self.get_logger().info("landedOnPlatform fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+        except Exception as e:
+            self.get_logger().info(f"flow1 error: {e}")
             self.flow_mode = self.STOP_FLOW
-            return
-        time.sleep(4)
-        self.get_logger().info("takeoff")
-        if not self.mission.simpleTakeoff():
-            self.get_logger().info("takeoff fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info("navigateTo fire")
-        if not self.mission.navigateTo(
-            self.thermal_alert_msg.x, self.thermal_alert_msg.y, 2
-        ):
-            self.get_logger().info("navigateTo fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info("fire distinguish")
-        if not self.mission.fireDistinguish():
-            self.get_logger().info("fire distinguish fail")
-            # self.flow_mode = self.STOP_FLOW
-            # return
-        self.get_logger().info("navigateTo home")
-        if not self.mission.navigateTo(6.87, 0.84, 2):
-            self.get_logger().info("navigateTo fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info("landedOnPlatform")
-        if not self.mission.landedOnPlatform():
-            self.get_logger().info("landedOnPlatform fail")
-            self.flow_mode = self.STOP_FLOW
-            return
         self.flow_mode = self.STOP_FLOW
-
 
 def main():
     if not rclpy.ok():
         rclpy.init()
     flight_node = MainFlightNode()
-    flight_node.flow_mode = flight_node.STOP_FLOW
+    flight_node.flow_mode = flight_node.TEST_FLOW
     rclpy.spin(flight_node)
     flight_node.destroy_node()
     rclpy.shutdown()
