@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 import time
 from pymodbus.client.sync import ModbusTcpClient as ModbusClient
-from pymodbus.exceptions import ModbusIOException
+from pymodbus.exceptions import ModbusIOException, ConnectionException
 from platform_communication.srv import (
     AlignmentRod,
     PerforatedPlate,
@@ -88,23 +88,29 @@ class PlatformCommunicationNode(Node):
     # ---------------------------------------------------------------------------- #
     def alignment_rod_callback(self, request, response):
         self.get_logger().info("alignment rod service is called")
-        response.success = True
-        try:
-            if request.open:
-                result = self.client.write_coil(
-                    self.open_alignment_rod_addr, True, unit=self.UNIT
-                )
-                if result.isError():
-                    response.success = False
-            else:
-                result = self.client.write_coil(
-                    self.close_alignment_rod_addr, True, unit=self.UNIT
-                )
-                if result.isError():
-                    response.success = False
-        except Exception as e:
-            self.get_logger().error(f"error: {str(e)}")
-            response.success = False
+        for i in range(2):
+            response.success = True
+            try:
+                if request.open:
+                    result = self.client.write_coil(
+                        self.open_alignment_rod_addr, True, unit=self.UNIT
+                    )
+                    if result.isError():
+                        response.success = False
+                else:
+                    result = self.client.write_coil(
+                        self.close_alignment_rod_addr, True, unit=self.UNIT
+                    )
+                    if result.isError():
+                        response.success = False
+                break
+            except ConnectionException as e:
+                self.get_logger().error(f"Connection error: {e}")
+                response.success = False
+            except Exception as e:
+                self.get_logger().error(f"error: {str(e)}")
+                response.success = False
+                break
         result = self.client.read_coils(self.open_alignment_rod_addr,2)
         self.get_logger().info(f'result: {result.bits}')
         self.get_logger().info(f"response: {response}")
@@ -114,19 +120,25 @@ class PlatformCommunicationNode(Node):
 
     def perforated_plate_callback(self, request, response):
         self.get_logger().info("perforated plate service is called")
-        response.success = True
-        try:
-            if request.open:
-                result = self.client.write_coil(self.open_perforated_plate_addr, True)
-                if result.isError():
-                    response.success = False
-            else:
-                result = self.client.write_coil(self.close_perforated_plate_addr, True)
-                if result.isError():
-                    response.success = False
-        except Exception as e:
-            self.get_logger().error(f"error: {str(e)}")
-            response.success = False
+        for i in range(2):
+            response.success = True
+            try:
+                if request.open:
+                    result = self.client.write_coil(self.open_perforated_plate_addr, True)
+                    if result.isError():
+                        response.success = False
+                else:
+                    result = self.client.write_coil(self.close_perforated_plate_addr, True)
+                    if result.isError():
+                        response.success = False
+                break
+            except ConnectionException as e:
+                self.get_logger().error(f"Connection error: {e}")
+                response.success = False
+            except Exception as e:
+                self.get_logger().error(f"error: {str(e)}")
+                response.success = False
+                break
         self.get_logger().info(f"response: {response}")
         if response.success:
             response.success = self.wait_finish()
@@ -134,16 +146,22 @@ class PlatformCommunicationNode(Node):
 
     def moveto_charge_tank_callback(self, request, response):
         self.get_logger().info("moveto charge tank service is called")
-        response.success = True
-        try:
-            result = self.client.write_coil(
-                self.moveto_charge_tank_addr, True, unit=self.UNIT
-            )
-            if result.isError():
+        for i in range(2):
+            response.success = True
+            try:
+                result = self.client.write_coil(
+                    self.moveto_charge_tank_addr, True, unit=self.UNIT
+                )
+                if result.isError():
+                    response.success = False
+                break
+            except ConnectionException as e:
+                self.get_logger().error(f"Connection error: {e}")
                 response.success = False
-        except Exception as e:
-            self.get_logger().error(f"error: {str(e)}")
-            response.success = False
+            except Exception as e:
+                self.get_logger().error(f"error: {str(e)}")
+                response.success = False
+                break
         self.get_logger().info(f"response: {response}")
         if response.success:
             response.success = self.wait_finish()
@@ -154,17 +172,23 @@ class PlatformCommunicationNode(Node):
             self.get_logger().info("out of extinguish range")
             response.success = False
             return response
-        self.get_logger().info("moveto extinguisher service is called")
-        response.success = True
-        try:
-            result = self.client.write_coil(
-                self.moveto_extinguisher_addr + request.num -1, True, unit=self.UNIT
-            )
-            if result.isError():
+        for i in range(2):
+            response.success = True
+            self.get_logger().info("moveto extinguisher service is called")
+            try:
+                result = self.client.write_coil(
+                    self.moveto_extinguisher_addr + request.num -1, True, unit=self.UNIT
+                )
+                if result.isError():
+                    response.success = False
+                break
+            except ConnectionException as e:
+                self.get_logger().error(f"Connection error: {e}")
                 response.success = False
-        except Exception as e:
-            self.get_logger().error(f"error: {str(e)}")
-            response.success = False
+            except Exception as e:
+                self.get_logger().error(f"Unexpected error: {e}")
+                response.success = False
+                break
         self.get_logger().info(f"response: {response}")
         if response.success:
             response.success = self.wait_finish()
@@ -172,23 +196,29 @@ class PlatformCommunicationNode(Node):
 
     def vertical_slider_callback(self, request, response):
         self.get_logger().info("vertical slider service is called")
-        response.success = True
-        try:
-            if request.up:
-                result = self.client.write_coil(
-                    self.rise_vertical_slider_addr, True, unit=self.UNIT
-                )
-                if result.isError():
-                    response.success = False
-            else:
-                result = self.client.write_coil(
-                    self.drop_vertical_slider_addr, True, unit=self.UNIT
-                )
-                if result.isError():
-                    response.success = False
-        except Exception as e:
-            self.get_logger().error(f"error: {str(e)}")
-            response.success = False
+        for i in range(2):
+            response.success = True
+            try:
+                if request.up:
+                    result = self.client.write_coil(
+                        self.rise_vertical_slider_addr, True, unit=self.UNIT
+                    )
+                    if result.isError():
+                        response.success = False
+                else:
+                    result = self.client.write_coil(
+                        self.drop_vertical_slider_addr, True, unit=self.UNIT
+                    )
+                    if result.isError():
+                        response.success = False
+                break
+            except ConnectionException as e:
+                self.get_logger().error(f"Connection error: {e}")
+                response.success = False
+            except Exception as e:
+                self.get_logger().error(f"error: {str(e)}")
+                response.success = False
+                break
         self.get_logger().info(f"response: {response}")
         if response.success:
             response.success = self.wait_finish()
@@ -196,23 +226,29 @@ class PlatformCommunicationNode(Node):
 
     def mains_power_callback(self, request, response):
         self.get_logger().info("mains power service is called")
-        response.success = True
-        try:
-            if request.open:
-                result = self.client.write_coil(
-                    self.open_mains_power_addr, True, unit=self.UNIT
-                )
-                if result.isError():
-                    response.success = False
-            else:
-                result = self.client.write_coil(
-                    self.close_mains_power_addr, True, unit=self.UNIT
-                )
-                if result.isError():
-                    response.success = False
-        except Exception as e:
-            self.get_logger().error(f"error: {str(e)}")
-            response.success = False
+        for i in range(2):
+            response.success = True
+            try:
+                if request.open:
+                    result = self.client.write_coil(
+                        self.open_mains_power_addr, True, unit=self.UNIT
+                    )
+                    if result.isError():
+                        response.success = False
+                else:
+                    result = self.client.write_coil(
+                        self.close_mains_power_addr, True, unit=self.UNIT
+                    )
+                    if result.isError():
+                        response.success = False
+                break
+            except ConnectionException as e:
+                self.get_logger().error(f"Connection error: {e}")
+                response.success = False
+            except Exception as e:
+                self.get_logger().error(f"error: {str(e)}")
+                response.success = False
+                break
         self.get_logger().info(f"response: {response}")
         if response.success:
             response.success = self.wait_finish()
@@ -220,26 +256,32 @@ class PlatformCommunicationNode(Node):
 
     def check_tank_status_callback(self, request, response):
         self.get_logger().info("check tank status service is called")
-        response.success = True
-        try:
-            result = self.client.read_coils(
-                self.check_tank_status_addr, 3
-            )
-            if result.isError():
-                self.get_logger().error("ModbusIOException")
+        for i in range(2):
+            response.success = True
+            try:
+                result = self.client.read_coils(
+                    self.check_tank_status_addr, 3
+                )
+                if result.isError():
+                    self.get_logger().error("ModbusIOException")
+                    response.success = False
+                    return response
+                self.get_logger().info(str(result.bits))
+                # 判斷現在在哪一個桶位
+                index = -1
+                for i in range(len(result.bits)):
+                    if result.bits[i] == 1:
+                        index = i
+                        break
+                response.num = index
+                break
+            except ConnectionException as e:
+                self.get_logger().error(f"Connection error: {e}")
                 response.success = False
-                return response
-            self.get_logger().info(str(result.bits))
-            # 判斷現在在哪一個桶位
-            index = -1
-            for i in range(len(result.bits)):
-                if result.bits[i] == 1:
-                    index = i
-                    break
-            response.num = index
-        except Exception as e:
-            self.get_logger().error(f"error: {str(e)}")
-            response.success = False
+            except Exception as e:
+                self.get_logger().error(f"error: {str(e)}")
+                response.success = False
+                break
         return response
     # ---------------------------------------------------------------------------- #
     #                                   function                                   #
