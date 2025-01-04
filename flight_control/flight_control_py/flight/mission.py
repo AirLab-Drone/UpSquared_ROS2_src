@@ -42,6 +42,7 @@ class Mission:
     END_CHARE_MODE = 9
     PREPARE_TAKEOFF_MODE = 10
     RECOVER_PAYLOAD_MODE = 11
+    THROWING_EXTINGUISHER_MODE = 12
 
     # define control parameter
     LIMIT_SEALING_RANGE = 0.8  # 距離天花板的最小距離
@@ -136,7 +137,8 @@ class Mission:
                 self.get_logger().info("service not available, waiting again...")
 
         # ---------------------------- aruco marker config --------------------------- #
-        self.markers_config = get_yaml_config("aruco_detect", "aruco_markers.yaml")[
+        aruco_config_path = self.node.get_parameter("config_file").get_parameter_value().string_value
+        self.markers_config = get_yaml_config(config_file_path=aruco_config_path)[
             "aruco_markers"
         ]
 
@@ -170,6 +172,7 @@ class Mission:
             self.END_CHARE_MODE,
             self.PREPARE_TAKEOFF_MODE,
             self.RECOVER_PAYLOAD_MODE,
+            self.THROWING_EXTINGUISHER_MODE,
         ]:
             self.node.get_logger().error("not a valid mode")
             return False
@@ -450,7 +453,7 @@ class Mission:
         )
 
         # --------------------------------- function --------------------------------- #
-        # 如果距離範圍在threshold內就回傳True    self.spry_pin = gpio.GPIOPin(14, gpio.OUT)
+        # 如果距離範圍在threshold內就回傳True    
         def around(a, b, threshold=0.1):
             return abs(a - b) < threshold
 
@@ -482,6 +485,7 @@ class Mission:
         while not (
             around(self.flight_info.uwb_coordinate.x, destination_x)
             and around(self.flight_info.uwb_coordinate.y, destination_y)
+            and around(self.flight_info.rangefinder_alt, destination_z)
         ):
             # ----------------------------------- 例外處裡 ----------------------------------- #
             # 設定中斷點，如果不是前往火源模式就直接結束
@@ -1074,6 +1078,32 @@ class Mission:
         if result is None or not result.success:
             self.stopMission()
             return False
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+    
+    def throwingExtinguisher(self):
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.THROWING_EXTINGUISHER_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.THROWING_EXTINGUISHER_MODE:
+            self.node.get_logger().info("It's not in template mode")
+            self.stopMission()
+            return False
+        for i in range(2):
+            # 磁鐵放
+            result = self.__call_service_and_wait(
+                self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            else:
+                break
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
         return True
