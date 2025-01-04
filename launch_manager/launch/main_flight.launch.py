@@ -14,13 +14,24 @@ def launch_setup(context, *args, **kwargs):
         'config',
         'aruco_markers.yaml',
     )
+    base_position_file = ""
     
     if parm_simulation:
         # 在这里添加你想在 simulation 模式下执行的操作
         print("Simulation mode is enabled")
+        base_position_file = os.path.join(
+            get_package_share_directory('flight_control'),
+            'config',
+            'base_position_sim.yaml',
+        )
     else:
         # 在这里添加你想在非 simulation 模式下执行的操作
         print("Simulation mode is disabled")
+        base_position_file = os.path.join(
+            get_package_share_directory('flight_control'),
+            'config',
+            'base_position.yaml',
+        )
 
     return [
         Node(
@@ -31,6 +42,7 @@ def launch_setup(context, *args, **kwargs):
             parameters=[
                 {'config_file': aruco_markers_file},
                 {'simulation': parm_simulation},
+                {'base_position_config': base_position_file},
             ],
         ),
     ]

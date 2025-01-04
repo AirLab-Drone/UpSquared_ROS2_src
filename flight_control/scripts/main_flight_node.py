@@ -7,6 +7,7 @@ from flight_control_py.flight.base_control import BaseControl as FlightControl
 from flight_control_py.flight.flight_controller_info import FlightInfo
 from flight_control_py.flight.mission import Mission
 from thermal_msgs.msg import ThermalAlert
+from flight_control_py.tool.get_yaml_config import get_yaml_config
 
 
 class MainFlightNode(Node):
@@ -24,12 +25,19 @@ class MainFlightNode(Node):
         # --------------------------------ros2 Parameters -------------------------------- #
         self.declare_parameter("simulation", False)
         self.declare_parameter("bcn_orient_yaw", 0.0)
-        self.declare_parameter("config_file", "")
+        self.declare_parameter("config_file", "")           #這是讀取aruco marker的設定檔
+        self.declare_parameter("base_position_config", "")  #這是讀取基地位置的設定檔
 
         # 創建控制實例
         self.controller = FlightControl(self)
         self.flight_info = FlightInfo(self)
         self.mission = Mission(self.controller, self.flight_info, self)
+        # 讀取設定檔
+        base_position_config_path = self.get_parameter("base_position_config").get_parameter_value().string_value
+        if base_position_config_path == "":
+            self.get_logger().error("Please set base_position_config parameter")
+            raise Exception("Configuration file not set")
+        self.base_position_config = get_yaml_config(config_file_path=base_position_config_path)
         # -------------------------------- subscriber -------------------------------- #
         # 接收火源警報
         self.create_subscription(
@@ -117,6 +125,7 @@ class MainFlightNode(Node):
                 self.flow_mode = self.STOP_FLOW
                 return
             time.sleep(4)
+            # ----------------------------- prepare takeroff ----------------------------- #
             # self.get_logger().info("loading extinguisher")
             # if not self.mission.loadingExtinguisher():
             #     self.get_logger().info("loading extinguisher fail")
@@ -128,6 +137,7 @@ class MainFlightNode(Node):
             #     self.flow_mode = self.STOP_FLOW
             #     return
             # self.get_logger().info("takeoff")
+            # -------------------------------- fight fire -------------------------------- #
             if not self.mission.simpleTakeoff():
                 self.get_logger().info("takeoff fail")
                 self.flow_mode = self.STOP_FLOW
@@ -144,8 +154,39 @@ class MainFlightNode(Node):
                 self.get_logger().info("fire distinguish fail")
                 # self.flow_mode = self.STOP_FLOW
                 # return
+            # ----------------------------- throw extinguish ----------------------------- #
+            self.get_logger().info("throw extinguisher")
+            throwing_position = [self.base_position_config["throwing"]["x"], self.base_position_config["throwing"]["y"]]
+            # go to throw extinguisher position
+            if not self.mission.navigateTo(
+                throwing_position[0], throwing_position[1], 2.5
+            ):
+                self.get_logger().info("navigateTo fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            # down to throw extinguisher
+            if not self.mission.navigateTo(
+                throwing_position[0], throwing_position[1], 1.5
+            ):
+                self.get_logger().info("navigateTo fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            # # throw extinguisher
+            # if not self.mission.throwExtinguisher():
+            #     self.get_logger().info("throw extinguisher fail")
+            #     self.flow_mode = self.STOP_FLOW
+            #     return
+            # go up
+            if not self.mission.navigateTo(
+                throwing_position[0], throwing_position[1], 2.5
+            ):
+                self.get_logger().info("navigateTo fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            # ---------------------------------- go home --------------------------------- #
             self.get_logger().info("navigateTo home")
-            if not self.mission.navigateTo(5, 1, 2.5):
+            home_position = [self.base_position_config["home"]["x"], self.base_position_config["home"]["y"]]
+            if not self.mission.navigateTo(home_position[0],home_position[1], 2.5):
                 self.get_logger().info("navigateTo fail")
                 self.flow_mode = self.STOP_FLOW
                 return
@@ -163,6 +204,7 @@ class MainFlightNode(Node):
             self.get_logger().info(f"flow1 error: {e}")
             self.flow_mode = self.STOP_FLOW
         self.flow_mode = self.STOP_FLOW
+
 
 def main():
     if not rclpy.ok():
