@@ -24,7 +24,7 @@ def generate_launch_description():
     aruco_markers_file = os.path.join(
         get_package_share_directory("aruco_detect"),
         "config",
-        "aruco_markers.yaml",
+        "platform_markers.yaml",
     )
     camera_config_file = os.path.join(
         get_package_share_directory("aruco_detect"),

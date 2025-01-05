@@ -1,12 +1,12 @@
 # 熱像儀安裝位置與旋轉角度
-# x-axis: 向右, y-axis: 向後, z-axis: 向上, yaw: 順時針為正
+# x-axis: 向右, y-axis: 向後, z-axis: 向上, yaw: 逆時針為正
 thermal_camera_pose:
   x: 0.0
   y: 0.125
   z: -0.35
   roll: 0.0
   pitch: 0.0
-  yaw: 0.0
+  yaw: 90.0
 # 熱像儀的視角
 # unit is degree
 thermal_camera_params:

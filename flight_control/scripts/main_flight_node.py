@@ -200,6 +200,13 @@ class MainFlightNode(Node):
                 self.get_logger().info("landedOnPlatform fail")
                 self.flow_mode = self.STOP_FLOW
                 return
+            time.sleep(5)
+            self.get_logger().info("align drone")
+            # if not self.mission.platformAlignment():
+            #     self.get_logger().info("align drone fail")
+            #     self.flow_mode = self.STOP_FLOW
+            #     return
+            
         except Exception as e:
             self.get_logger().info(f"flow1 error: {e}")
             self.flow_mode = self.STOP_FLOW
