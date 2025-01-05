@@ -9,6 +9,7 @@ from launch.actions import (
     IncludeLaunchDescription,
 )
 from launch.launch_description_sources import AnyLaunchDescriptionSource
+from launch.actions import TimerAction
 
 
 def flight_controller_setup(context, *args, **kwargs):
@@ -160,5 +161,15 @@ def generate_launch_description():
             OpaqueFunction(function=thermal_camera_setup),
             OpaqueFunction(function=payload_setup),
             OpaqueFunction(function=platform_setup),
+            TimerAction(
+                period=10.0,
+                actions=[
+                    Node(
+                        package="drone_status",
+                        executable="USBChecker.py",
+                        output="screen",
+                    )
+                ],
+            )
         ]
     )
