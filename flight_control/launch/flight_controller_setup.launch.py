@@ -1,6 +1,11 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument, TimerAction, ExecuteProcess
+from launch.actions import (
+    IncludeLaunchDescription,
+    DeclareLaunchArgument,
+    TimerAction,
+    ExecuteProcess,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.launch_description_sources import AnyLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -10,7 +15,7 @@ from ament_index_python import get_package_share_directory
 
 def changeMavrosPublishRate():
     return TimerAction(
-        period=10.0,
+        period=5.0,
         actions=[
             ExecuteProcess(
                 cmd=[
@@ -27,6 +32,8 @@ def changeMavrosPublishRate():
             )
         ],
     )
+
+
 # def changeMavrosPublishRate(msg_id):
 #     return TimerAction(
 #         period=10.0,
@@ -61,12 +68,13 @@ def generate_launch_description():
             IncludeLaunchDescription(
                 AnyLaunchDescriptionSource(
                     os.path.join(
-                        get_package_share_directory("flight_control"), "launch/apm.launch"
+                        get_package_share_directory("flight_control"),
+                        "launch/apm.launch",
                     )
                 ),
                 launch_arguments={
-                    "fcu_url": "/dev/ttyACM0",
-                    # "fcu_url": "/dev/drone_usb",
+                    # "fcu_url": "/dev/ttyACM0",
+                    "fcu_url": "/dev/drone_usb",
                 }.items(),
             ),
             # changeMavrosPublishRate(24),

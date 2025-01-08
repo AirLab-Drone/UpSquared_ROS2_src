@@ -78,7 +78,12 @@ class FlightInfo:
                 rclpy.qos.qos_profile_sensor_data,
             )
         else:
-            pass
+             self.node.create_subscription(
+                Range,
+                "/mavros/rangefinder2_pub",
+                self.rangefinder2Callback,
+                rclpy.qos.qos_profile_sensor_data,
+            )
         # ------------------------------ set init value ------------------------------ #
         self.rangefinder_alt = 0
         self.uwb_coordinate = XYZ()

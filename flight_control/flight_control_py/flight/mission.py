@@ -757,13 +757,13 @@ class Mission:
         if result is None or not result.success:
             self.stopMission()
             return False
-        # 接點確認
-        result = self.__call_service_and_wait(
-            self.check_fire_extinguisher_client, CheckPayload.Request()
-        )
-        if result is None or not result.success:
-            self.stopMission()
-            return False
+        # # 接點確認
+        # result = self.__call_service_and_wait(
+        #     self.check_fire_extinguisher_client, CheckPayload.Request()
+        # )
+        # if result is None or not result.success:
+        #     self.stopMission()
+        #     return False
         # 降下抬桿
         result = self.__call_service_and_wait(
             self.vertical_slider_client, VerticalSlider.Request(up=False)
@@ -791,10 +791,10 @@ class Mission:
         result = self.__call_service_and_wait(
             self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
         )
-        # 確認接點
-        result = self.__call_service_and_wait(
-            self.check_fire_extinguisher_client, CheckPayload.Request()
-        )
+        # # 確認接點
+        # result = self.__call_service_and_wait(
+        #     self.check_fire_extinguisher_client, CheckPayload.Request()
+        # )
         if result is None or not result.success:
             # 重新裝滅火器
             result = self.loadingExtinguisher()
