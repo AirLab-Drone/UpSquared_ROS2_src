@@ -136,8 +136,8 @@ class MainFlightNode(Node):
                 self.get_logger().info("prepareTakeoff fail")
                 self.flow_mode = self.STOP_FLOW
                 return
-            self.get_logger().info("takeoff")
             # -------------------------------- fight fire -------------------------------- #
+            self.get_logger().info("takeoff")
             if not self.mission.simpleTakeoff():
                 self.get_logger().info("takeoff fail")
                 self.flow_mode = self.STOP_FLOW

@@ -485,7 +485,6 @@ class Mission:
         while not (
             around(self.flight_info.uwb_coordinate.x, destination_x)
             and around(self.flight_info.uwb_coordinate.y, destination_y)
-            and around(self.flight_info.rangefinder_alt, destination_z)
         ):
             # ----------------------------------- 例外處裡 ----------------------------------- #
             # 設定中斷點，如果不是前往火源模式就直接結束
