@@ -44,6 +44,7 @@ class Mission:
     RECOVER_PAYLOAD_MODE = 11
     THROWING_EXTINGUISHER_MODE = 12
     VERTICAL_FLIGHT_MODE = 13
+    PREPARE_LANDING_NO_WAIT_MODE = 14
 
     # define control parameter
     LIMIT_SEALING_RANGE = 0.8  # 距離天花板的最小距離
@@ -78,7 +79,7 @@ class Mission:
         )
         # ------------------------------ service client ------------------------------ #
         if not self.node.get_parameter("simulation").get_parameter_value().bool_value:
-            # payload service client
+            # -------------------------- payload service client -------------------------- #
             self.fire_extinguisher_spry_client = self.node.create_client(
                 Spry, "/fire_extinguisher_jy_modbus/spry"
             )
@@ -86,6 +87,7 @@ class Mission:
                 timeout_sec=1.0
             ):
                 self.node.get_logger().info("service not available, waiting again...")
+            # ---------------------------
             self.hold_fire_extinguisher_client = self.node.create_client(
                 HoldPayload, "/fire_extinguisher_jy_modbus/hold_fire_extinguisher"
             )
@@ -93,6 +95,7 @@ class Mission:
                 timeout_sec=1.0
             ):
                 self.node.get_logger().info("service not available, waiting again...")
+            # ---------------------------
             self.check_fire_extinguisher_client = self.node.create_client(
                 CheckPayload, "/fire_extinguisher_jy_modbus/check_fire_extinguisher"
             )
@@ -100,50 +103,63 @@ class Mission:
                 timeout_sec=1.0
             ):
                 self.node.get_logger().info("service not available, waiting again...")
-            # platform service client
+            # -------------------------- platform service client ------------------------- #
             self.alignment_rod_client = self.node.create_client(
                 AlignmentRod, "platform_communication/alignment_rod"
             )
             while not self.alignment_rod_client.wait_for_service(timeout_sec=1.0):
-                self.get_logger().info("service not available, waiting again...")
+                self.node.get_logger().info("service not available, waiting again...")
+            # ---------------------------
             self.perforated_plate_client = self.node.create_client(
                 PerforatedPlate, "platform_communication/perforated_plate"
             )
             while not self.perforated_plate_client.wait_for_service(timeout_sec=1.0):
-                self.get_logger().info("service not available, waiting again...")
+                self.node.get_logger().info("service not available, waiting again...")
+            # ---------------------------
+            self.perforated_plate_no_wait_client = self.node.create_client(
+                PerforatedPlate, "platform_communication/perforated_plate_no_wait"
+            )
+            while not self.perforated_plate_no_wait_client.wait_for_service(
+                timeout_sec=1.0
+            ):
+                self.node.get_logger().info("service not available, waiting again...")
+            # ---------------------------
             self.moveto_charge_tank_client = self.node.create_client(
                 MovetoChargeTank, "platform_communication/moveto_charge_tank"
             )
             while not self.moveto_charge_tank_client.wait_for_service(timeout_sec=1.0):
-                self.get_logger().info("service not available, waiting again...")
+                self.node.get_logger().info("service not available, waiting again...")
+            # ---------------------------
             self.moveto_extinguisher_client = self.node.create_client(
                 MovetoExtinguisher, "platform_communication/moveto_extinguisher"
             )
             while not self.moveto_extinguisher_client.wait_for_service(timeout_sec=1.0):
-                self.get_logger().info("service not available, waiting again...")
+                self.node.get_logger().info("service not available, waiting again...")
+            # ---------------------------
             self.vertical_slider_client = self.node.create_client(
                 VerticalSlider, "platform_communication/vertical_slider"
             )
             while not self.vertical_slider_client.wait_for_service(timeout_sec=1.0):
-                self.get_logger().info("service not available, waiting again...")
+                self.node.get_logger().info("service not available, waiting again...")
+            # ---------------------------
             self.mains_power_client = self.node.create_client(
                 MainsPower, "platform_communication/mains_power"
             )
             while not self.mains_power_client.wait_for_service(timeout_sec=1.0):
-                self.get_logger().info("service not available, waiting again...")
+                self.node.get_logger().info("service not available, waiting again...")
+            # ---------------------------
             self.check_tank_status_client = self.node.create_client(
                 CheckTankStatus, "platform_communication/check_tank_status"
             )
             while not self.check_tank_status_client.wait_for_service(timeout_sec=1.0):
-                self.get_logger().info("service not available, waiting again...")
-
-        # ---------------------------- aruco marker config --------------------------- #
-        aruco_config_path = (
-            self.node.get_parameter("config_file").get_parameter_value().string_value
-        )
-        self.markers_config = get_yaml_config(config_file_path=aruco_config_path)[
-            "aruco_markers"
-        ]
+                self.node.get_logger().info("service not available, waiting again...")
+            # ---------------------------- aruco marker config --------------------------- #
+            aruco_config_path = (
+                self.node.get_parameter("config_file").get_parameter_value().string_value
+            )
+            self.markers_config = get_yaml_config(config_file_path=aruco_config_path)[
+                "aruco_markers"
+            ]
 
     # ---------------------------------------------------------------------------- #
     #                                   callback                                   #
@@ -177,6 +193,7 @@ class Mission:
             self.RECOVER_PAYLOAD_MODE,
             self.THROWING_EXTINGUISHER_MODE,
             self.VERTICAL_FLIGHT_MODE,
+            self.PREPARE_LANDING_NO_WAIT_MODE,
         ]:
             self.node.get_logger().error("not a valid mode")
             return False
@@ -915,6 +932,35 @@ class Mission:
         result = self.__call_service_and_wait(
             self.alignment_rod_client, AlignmentRod.Request(open=True)
         )
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+
+    def prepareLandingNoWait(self):
+        """
+        預先設置平台降落狀態，無需等待模式。
+        返回:
+            bool: 如果降落準備成功，返回 True，否則返回 False。
+        """
+
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.PREPARE_LANDING_NO_WAIT_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.PREPARE_LANDING_NO_WAIT_MODE:
+            self.node.get_logger().info("It's not in PREPARE_LANDING_MODE")
+            self.stopMission()
+            return False
+        # 關閉開孔板，不等待結果
+        result = self.__call_service_and_wait(
+            self.perforated_plate_no_wait_client, PerforatedPlate.Request(open=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
         return True
