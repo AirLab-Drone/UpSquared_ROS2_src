@@ -43,6 +43,7 @@ class Mission:
     PREPARE_TAKEOFF_MODE = 10
     RECOVER_PAYLOAD_MODE = 11
     THROWING_EXTINGUISHER_MODE = 12
+    VERTICAL_FLIGHT_MODE = 13
 
     # define control parameter
     LIMIT_SEALING_RANGE = 0.8  # 距離天花板的最小距離
@@ -137,7 +138,9 @@ class Mission:
                 self.get_logger().info("service not available, waiting again...")
 
         # ---------------------------- aruco marker config --------------------------- #
-        aruco_config_path = self.node.get_parameter("config_file").get_parameter_value().string_value
+        aruco_config_path = (
+            self.node.get_parameter("config_file").get_parameter_value().string_value
+        )
         self.markers_config = get_yaml_config(config_file_path=aruco_config_path)[
             "aruco_markers"
         ]
@@ -173,6 +176,7 @@ class Mission:
             self.PREPARE_TAKEOFF_MODE,
             self.RECOVER_PAYLOAD_MODE,
             self.THROWING_EXTINGUISHER_MODE,
+            self.VERTICAL_FLIGHT_MODE,
         ]:
             self.node.get_logger().error("not a valid mode")
             return False
@@ -453,7 +457,7 @@ class Mission:
         )
 
         # --------------------------------- function --------------------------------- #
-        # 如果距離範圍在threshold內就回傳True    
+        # 如果距離範圍在threshold內就回傳True
         def around(a, b, threshold=0.1):
             return abs(a - b) < threshold
 
@@ -517,7 +521,7 @@ class Mission:
             move_forward = math.sqrt(x_diff**2 + y_diff**2)
             move_forward = abs(min(max(move_forward, -MAX_SPEED), MAX_SPEED))
             # 高度移動距離，並且限制最大速度
-            move_z = min(max(z_diff, -MAX_SPEED), MAX_SPEED)
+            move_z = min(max(z_diff, -MAX_VERTICAL_SPEED), MAX_VERTICAL_SPEED)
             self.node.get_logger().debug(
                 f"[Mission.navigateTo] rotate_deg: {rotate_deg}, move_forward: {move_forward}, move_yaw: {move_yaw}"
             )
@@ -527,6 +531,66 @@ class Mission:
                 )
             else:
                 self.controller.sendPositionTargetVelocity(0, 0, move_z, move_yaw)
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+
+    def verticalFlightMission(self, destination_z: float):
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.VERTICAL_FLIGHT_MODE)
+
+        # --------------------------------- variable --------------------------------- #
+        LIMIT_SEALING_RANGE = self.LIMIT_SEALING_RANGE
+        MAX_VERTICAL_SPEED = self.MAX_VERTICAL_SPEED
+        NAV_LOWEST_HEIGHT = self.LOWEST_HEIGHT
+
+        # --------------------------------- function --------------------------------- #
+        def around(a, b, threshold=0.1):
+            return abs(a - b) < threshold
+
+        def diffZCompute(current_high):
+            # 計算須移動的高度
+            up_distance = self.flight_info.rangefinder2_range
+            down_distance = self.flight_info.rangefinder_alt
+            vertical_space = up_distance + down_distance
+            if vertical_space < LIMIT_SEALING_RANGE + NAV_LOWEST_HEIGHT:
+                return 0
+            if vertical_space < destination_z + LIMIT_SEALING_RANGE:
+                target_high = (
+                    vertical_space - LIMIT_SEALING_RANGE - NAV_LOWEST_HEIGHT
+                ) / 2 + NAV_LOWEST_HEIGHT
+                return target_high - current_high
+            if vertical_space > destination_z + LIMIT_SEALING_RANGE:
+                return destination_z - current_high
+            return 0
+
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.VERTICAL_FLIGHT_MODE:
+            self.node.get_logger().info("It's not in template mode")
+            self.stopMission()
+            return False
+        while not around(self.flight_info.rangefinder_alt, destination_z):
+            # ----------------------------------- 例外處理 ----------------------------------- #
+            # 設定中斷點，如果不是前往火源模式就直接結束
+            if self.mode != self.VERTICAL_FLIGHT_MODE:
+                self.stopMission()
+                return False
+            # 高度空間不足就停止
+            if (
+                self.flight_info.rangefinder_alt + self.flight_info.rangefinder2_range
+                < LIMIT_SEALING_RANGE + NAV_LOWEST_HEIGHT
+            ):
+                self.stopMission()
+                self.node.get_logger().error("not enough space to navigate")
+                return False
+            z_diff = diffZCompute(self.flight_info.rangefinder_alt)
+            # 計算移動速度，並且限制最大速度
+            move_z = min(max(z_diff, -MAX_VERTICAL_SPEED), MAX_VERTICAL_SPEED)
+            # 送出速度指令
+            self.controller.sendPositionTargetVelocity(0, 0, move_z, 0)
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
         return True
@@ -1080,7 +1144,7 @@ class Mission:
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
         return True
-    
+
     def throwingExtinguisher(self):
         # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
         if self.mode != self.WAIT_MODE:
