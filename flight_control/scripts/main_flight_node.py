@@ -132,11 +132,11 @@ class MainFlightNode(Node):
                 return
             time.sleep(4)
             # ----------------------------- prepare takeoff ----------------------------- #
-            # self.get_logger().info("loading extinguisher")
-            # if not self.mission.loadingExtinguisher():
-            #     self.get_logger().info("loading extinguisher fail")
-            #     self.flow_mode = self.STOP_FLOW
-            #     return
+            self.get_logger().info("loading extinguisher")
+            if not self.mission.loadingExtinguisher():
+                self.get_logger().info("loading extinguisher fail")
+                self.flow_mode = self.STOP_FLOW
+                return
             self.get_logger().info("prepare takeoff")
             if not self.mission.prepareTakeoff():
                 self.get_logger().info("prepareTakeoff fail")
@@ -213,12 +213,12 @@ class MainFlightNode(Node):
                 self.get_logger().info("landedOnPlatform fail")
                 self.flow_mode = self.STOP_FLOW
                 return
-            time.sleep(5)
-            self.get_logger().info("align drone")
-            if not self.mission.platformAlignment():
-                self.get_logger().info("align drone fail")
-                self.flow_mode = self.STOP_FLOW
-                return
+            # time.sleep(5)
+            # self.get_logger().info("align drone")
+            # if not self.mission.platformAlignment():
+            #     self.get_logger().info("align drone fail")
+            #     self.flow_mode = self.STOP_FLOW
+            #     return
 
         except Exception as e:
             self.get_logger().info(f"flow1 error: {e}")

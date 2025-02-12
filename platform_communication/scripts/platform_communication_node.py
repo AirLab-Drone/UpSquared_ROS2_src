@@ -345,6 +345,7 @@ class PlatformCommunicationNode(Node):
             seconds=timeout
         ):
             if self.check_finish_status():
+                time.sleep(0.3)
                 return True
             time.sleep(0.1)
         self.get_logger().info("wait platform status is timeout")
