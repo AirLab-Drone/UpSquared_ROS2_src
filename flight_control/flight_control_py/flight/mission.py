@@ -268,7 +268,7 @@ class Mission:
         start_time = rclpy.clock.Clock().now()
         # 等待起飛高度到達目標高度
         while abs(self.flight_info.rangefinder_alt - target_hight) > 0.5:
-            print(f"hight offset: {self.flight_info.rangefinder_alt - target_hight}")
+            # print(f"hight offset: {self.flight_info.rangefinder_alt - target_hight}")
             if rclpy.clock.Clock().now() - start_time > rclpy.time.Duration(seconds=7):
                 self.stopMission()
                 self.node.get_logger().error("takeoff time out")
@@ -750,6 +750,18 @@ class Mission:
             self.node.get_logger().info("It's not in LOADING_EXTINGUISHER_MODE")
             self.stopMission()
             return False
+        # 讀取滅火器位置
+        result = self.__call_service_and_wait(
+            self.check_tank_status_client, CheckTankStatus.Request()
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        if result.num >= 2:  # 滅火器數量2個，位置在2的時候表示沒有滅火器了
+            self.node.get_logger().info("fire extinguisher is empty")
+            self.stopMission()
+            return False
+        extinguisher_num = result.num + 1  # 裝填下一個滅火器
         # 降下抬桿
         result = self.__call_service_and_wait(
             self.vertical_slider_client, VerticalSlider.Request(up=False)
@@ -794,21 +806,10 @@ class Mission:
         if result is None or not result.success:
             self.stopMission()
             return False
-        # 讀取滅火器位置
-        result = self.__call_service_and_wait(
-            self.check_tank_status_client, CheckTankStatus.Request()
-        )
-        if result is None or not result.success:
-            self.stopMission()
-            return False
-        if result.num >= 2:  # 滅火器數量2個，位置在2的時候表示沒有滅火器了
-            self.node.get_logger().info("fire extinguisher is empty")
-            self.stopMission()
-            return False
-        extinguisher_num = result.num + 1  # 裝填下一個滅火器
+        
+        # 移動滅火器位置
         if extinguisher_num == -1 or extinguisher_num == 0:
             extinguisher_num = 1
-        # 移動滅火器位置
         result = self.__call_service_and_wait(
             self.moveto_extinguisher_client,
             MovetoExtinguisher.Request(num=extinguisher_num),
