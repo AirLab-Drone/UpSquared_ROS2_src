@@ -153,13 +153,13 @@ class Mission:
             )
             while not self.check_tank_status_client.wait_for_service(timeout_sec=1.0):
                 self.node.get_logger().info("service not available, waiting again...")
-            # ---------------------------- aruco marker config --------------------------- #
-            aruco_config_path = (
-                self.node.get_parameter("config_file").get_parameter_value().string_value
-            )
-            self.markers_config = get_yaml_config(config_file_path=aruco_config_path)[
-                "aruco_markers"
-            ]
+        # ---------------------------- aruco marker config --------------------------- #
+        aruco_config_path = (
+            self.node.get_parameter("config_file").get_parameter_value().string_value
+        )
+        self.markers_config = get_yaml_config(config_file_path=aruco_config_path)[
+            "aruco_markers"
+        ]
 
     # ---------------------------------------------------------------------------- #
     #                                   callback                                   #
