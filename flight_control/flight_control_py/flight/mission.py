@@ -771,15 +771,16 @@ class Mission:
         if result is None or not result.success:
             self.stopMission()
             return False
-        # 回收payload
-        self.node.get_logger().info("start reload")
-        self.__setMode(self.WAIT_MODE)
-        result = self.recoverPayload()
-        self.__setMode(self.LOADING_EXTINGUISHER_MODE)
-        self.node.get_logger().info(f"reload result: {result}")
-        if not result:
-            self.stopMission()
-            return False
+        #todo 刪除回收動作
+        # # 回收payload
+        # self.node.get_logger().info("start reload")
+        # self.__setMode(self.WAIT_MODE)
+        # result = self.recoverPayload()
+        # self.__setMode(self.LOADING_EXTINGUISHER_MODE)
+        # self.node.get_logger().info(f"reload result: {result}")
+        # if not result:
+        #     self.stopMission()
+        #     return False
         # 磁鐵放
         result = self.__call_service_and_wait(
             self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
