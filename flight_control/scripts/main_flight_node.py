@@ -108,7 +108,7 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        if not self.mission.loadingExtinguisher():
+        if not self.mission.reloading():
             self.get_logger().info("load extinguish fail")
             self.flow_mode = self.STOP_FLOW
             return
@@ -217,7 +217,7 @@ def main():
     if not rclpy.ok():
         rclpy.init()
     flight_node = MainFlightNode()
-    flight_node.flow_mode = flight_node.STOP_FLOW
+    flight_node.flow_mode = flight_node.TEST_FLOW
     rclpy.spin(flight_node)
     flight_node.destroy_node()
     rclpy.shutdown()

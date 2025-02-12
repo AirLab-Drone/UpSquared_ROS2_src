@@ -54,7 +54,7 @@ class FireExtinguisher_JYModbus(Node):
                 result = self.client.write_coil(self.spry_pin, True, unit=self.UNIT)
                 if result.isError():
                     response.success = False
-                time.sleep(2)
+                time.sleep(0.3)
                 result = self.client.write_coil(self.spry_pin, False, unit=self.UNIT)
                 if result.isError():
                     response.success = False

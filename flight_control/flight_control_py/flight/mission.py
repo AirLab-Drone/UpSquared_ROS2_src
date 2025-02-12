@@ -8,6 +8,7 @@ from flight_control_py.flight.flight_controller_info import FlightInfo
 from aruco_detect_py.aruco import Aruco
 from aruco_msgs.msg import Marker
 import time
+from openpyxl import Workbook
 import yaml
 from std_msgs.msg import Int32MultiArray, Float32
 from thermal_msgs.msg import ThermalAlert
@@ -43,6 +44,7 @@ class Mission:
     PREPARE_TAKEOFF_MODE = 10
     RECOVER_PAYLOAD_MODE = 11
     THROWING_EXTINGUISHER_MODE = 12
+    RELOADING_MODE = 13
 
     # define control parameter
     LIMIT_SEALING_RANGE = 0.8  # 距離天花板的最小距離
@@ -173,6 +175,7 @@ class Mission:
             self.PREPARE_TAKEOFF_MODE,
             self.RECOVER_PAYLOAD_MODE,
             self.THROWING_EXTINGUISHER_MODE,
+            self.RELOADING_MODE,
         ]:
             self.node.get_logger().error("not a valid mode")
             return False
@@ -1104,6 +1107,494 @@ class Mission:
                 return False
             else:
                 break
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+
+
+    def drop_payload(self):
+        # 磁鐵吸
+        result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+        )
+        if result is None or not result.success:
+            self.stopMission()
+            return False
+        self.stopMission()
+        return 
+
+
+    def reloading(self):
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.RELOADING_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.RELOADING_MODE:
+            self.node.get_logger().info("It's not in template mode")
+            self.stopMission()
+            return True
+
+        # Create an Excel workbook and sheet
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Reloading Times"
+        # Set up headers
+        sheet.append(["Iteration", "Action", "Start Time", "End Time", "Duration (s.ms)", "Loop Time (s.ms)"])
+
+        row_index = 11
+        rows_per_iteration = 11
+        for i in range (1,7):
+            #Start loop counter
+            loop_start_time = time.time()
+
+        
+            # close_hatch
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.perforated_plate_client, PerforatedPlate.Request(open=False)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "hatch_close", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+            # Align
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.alignment_rod_client, AlignmentRod.Request(open=False)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "align", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+            # hatch_open
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.perforated_plate_client, PerforatedPlate.Request(open=True)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "hatch_open", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+            #Bring tank 2
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+            self.moveto_extinguisher_client,
+            MovetoExtinguisher.Request(num=2),
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "move_t2", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+            # T2 Up
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.vertical_slider_client, VerticalSlider.Request(up=True)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "t2_up", start_time_formatted, end_time_formatted, duration_formatted, ""])
+            
+            # Hold
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
+            )
+            sheet.append([i, "hold_or_not", str(result), 111, 1, ""])
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(1)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "hold", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+            # Check Connection
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.check_fire_extinguisher_client, CheckPayload.Request()
+            )
+            sheet.append([i, "connect_or_not", str(result), 222, 1, ""])
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(1)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "connect", start_time_formatted, end_time_formatted, duration_formatted, ""])
+        
+            #Slider_down
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.vertical_slider_client, VerticalSlider.Request(up=False)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "slider_down", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+            # Align
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.alignment_rod_client, AlignmentRod.Request(open=True)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "align", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+
+            #------------------LOOOP---------------------
+
+            time.sleep(0.5)
+             # Calculate and store the loop time
+            loop_end_time = time.time()
+            loop_duration = loop_end_time - loop_start_time
+            loop_duration_formatted = f"{int(loop_duration)}.{int((loop_duration % 1) * 1000):03d}"
+
+            # Add loop time to the rows for this iteration
+            sheet.cell(row=row_index, column=6).value = loop_duration_formatted  # UP action row
+            # sheet.cell(row=row_index + 1, column=6).value = loop_duration_formatted  # DOWN action row
+
+
+            #--------------Back to initial position
+
+            result = self.__call_service_and_wait(
+                self.vertical_slider_client, VerticalSlider.Request(up=True)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+
+            result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(1)
+
+            result = self.__call_service_and_wait(
+                self.vertical_slider_client, VerticalSlider.Request(up=False)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+
+            result = self.__call_service_and_wait(
+            self.moveto_extinguisher_client,
+            MovetoExtinguisher.Request(num=1),
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            row_index += rows_per_iteration
+            
+        # Save the Excel file
+        workbook.save("reloading_3_3.xlsx")
+
+        # ----------------------------------- 結束任務 ----------------------------------- #
+        self.stopMission()
+        return True
+    
+    def USEDreloading(self):
+        # 檢查先前模式是否為等待模式，定且設定目前模式為導航模式
+        if self.mode != self.WAIT_MODE:
+            self.stopMission()
+            return False
+        self.__setMode(self.RELOADING_MODE)
+        # --------------------------------- variable --------------------------------- #
+        # ----------------------------------- 開始任務 ----------------------------------- #
+        if self.mode != self.RELOADING_MODE:
+            self.node.get_logger().info("It's not in template mode")
+            self.stopMission()
+            return True
+
+        # Create an Excel workbook and sheet
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Reloading Times"
+        # Set up headers
+        sheet.append(["Iteration", "Action", "Start Time", "End Time", "Duration (s.ms)", "Loop Time (s.ms)"])
+
+        row_index = 11
+        rows_per_iteration = 10
+        for i in range (1,10):
+            #Start loop counter
+            loop_start_time = time.time()
+
+            #magn_off
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+                
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "magn_off", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+
+            #charger_down
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.vertical_slider_client, VerticalSlider.Request(up=False)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "charger_down", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+            #Bring tank 1
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+            self.moveto_extinguisher_client,
+            MovetoExtinguisher.Request(num=1),
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "move_t1", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+        
+            # T1 Up
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.vertical_slider_client, VerticalSlider.Request(up=True)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "t1_up", start_time_formatted, end_time_formatted, duration_formatted, ""])
+            
+            # Hold
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
+            )
+            sheet.append([i, "hold_or_not", str(result), 111, 1, ""])
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(1)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "hold", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+            # Check Connection
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.check_fire_extinguisher_client, CheckPayload.Request()
+            )
+            sheet.append([i, "connect_or_not", str(result), 222, 1, ""])
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(1)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "connect", start_time_formatted, end_time_formatted, duration_formatted, ""])
+        
+            #Slider_down
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.vertical_slider_client, VerticalSlider.Request(up=False)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "slider_down", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+            # Align Open
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.alignment_rod_client, AlignmentRod.Request(open=True)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            end_time = time.time()
+            end_time_formatted = time.strftime("%M:%S.") + f"{int((end_time % 1) * 1000):03d}"
+            duration = end_time - start_time
+            duration_formatted = f"{int(duration)}.{int((duration % 1) * 1000):03d}"
+            sheet.append([i, "Align_off", start_time_formatted, end_time_formatted, duration_formatted, ""])
+
+            #------------------LOOOP---------------------
+
+            time.sleep(0.5)
+             # Calculate and store the loop time
+            loop_end_time = time.time()
+            loop_duration = loop_end_time - loop_start_time
+            loop_duration_formatted = f"{int(loop_duration)}.{int((loop_duration % 1) * 1000):03d}"
+
+            # Add loop time to the rows for this iteration
+            sheet.cell(row=row_index, column=6).value = loop_duration_formatted  # UP action row
+            # sheet.cell(row=row_index + 1, column=6).value = loop_duration_formatted  # DOWN action row
+
+            time.sleep(.5)
+
+            #--------------Back to initial position
+
+            #Slider up
+            result = self.__call_service_and_wait(
+                self.vertical_slider_client, VerticalSlider.Request(up=True)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+
+            # Drop
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+            )
+            sheet.append([i, "RETURNING", str(result), 111, 1, ""])
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(1)
+
+
+            #Slider_down
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.vertical_slider_client, VerticalSlider.Request(up=False)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+
+            #move_to_charger
+            result = self.__call_service_and_wait(
+            self.moveto_charge_tank_client, MovetoChargeTank.Request(open=True)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+
+            #align drone
+            result = self.__call_service_and_wait(
+                self.alignment_rod_client, AlignmentRod.Request(open=False)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+
+            #Slider_up
+            start_time = time.time()
+            start_time_formatted = time.strftime("%M:%S.") + f"{int((start_time % 1) * 1000):03d}"
+            result = self.__call_service_and_wait(
+                self.vertical_slider_client, VerticalSlider.Request(up=True)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(.5)
+            row_index += rows_per_iteration
+            
+        # Save the Excel file
+        workbook.save("fix_re_align_at_the_end_10_2.xlsx")
+
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
         return True
