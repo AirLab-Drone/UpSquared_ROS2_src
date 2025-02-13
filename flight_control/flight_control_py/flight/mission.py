@@ -831,20 +831,32 @@ class Mission:
         # if result is None or not result.success:
         #     self.stopMission()
         #     return False
-        # 磁鐵吸
-        result = self.__call_service_and_wait(
-            self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
-        )
-        if result is None or not result.success:
-            self.stopMission()
-            return False
-        # 接點確認
-        result = self.__call_service_and_wait(
-            self.check_fire_extinguisher_client, CheckPayload.Request()
-        )
-        if result is None or not result.success:
-            self.stopMission()
-            return False
+        renum = 3
+        for i in range(renum):
+            # 磁鐵放
+            result = self.__call_service_and_wait(
+                self.hold_fire_extinguisher_client, HoldPayload.Request(hold=False)
+            )
+            time.sleep(1)
+            # 磁鐵吸
+            result = self.__call_service_and_wait(
+                self.hold_fire_extinguisher_client, HoldPayload.Request(hold=True)
+            )
+            if result is None or not result.success:
+                self.stopMission()
+                return False
+            time.sleep(1)
+            # 接點確認
+            result = self.__call_service_and_wait(
+                self.check_fire_extinguisher_client, CheckPayload.Request()
+            )
+            if result is None or not result.success:
+                if i == (renum - 1):
+                    self.stopMission()
+                    return False
+            else:
+                self.node.get_logger().info("hold seccess")
+                break
         # 降下抬桿
         result = self.__call_service_and_wait(
             self.vertical_slider_client, VerticalSlider.Request(up=False)
