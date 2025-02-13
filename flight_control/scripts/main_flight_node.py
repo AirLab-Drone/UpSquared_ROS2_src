@@ -155,7 +155,7 @@ class MainFlightNode(Node):
                 self.flow_mode = self.STOP_FLOW
                 return
             if not self.mission.navigateTo(
-                self.thermal_alert_msg.x, self.thermal_alert_msg.y, 2
+                self.thermal_alert_msg.x, self.thermal_alert_msg.y, 3.0
             ):
                 self.get_logger().info("navigateTo fail")
                 self.flow_mode = self.STOP_FLOW
@@ -173,13 +173,13 @@ class MainFlightNode(Node):
             ]
             # go to throw extinguisher position
             if not self.mission.navigateTo(
-                throwing_position[0], throwing_position[1], 2.5
+                throwing_position[0], throwing_position[1], 3.0
             ):
                 self.get_logger().info("navigateTo fail")
                 self.flow_mode = self.STOP_FLOW
                 return
             # down to throw extinguisher
-            if not self.mission.verticalFlightMission(1.5):
+            if not self.mission.verticalFlightMission(1.0):
                 self.get_logger().info("go down fail")
                 self.flow_mode = self.STOP_FLOW
                 return
@@ -189,7 +189,7 @@ class MainFlightNode(Node):
             #     self.flow_mode = self.STOP_FLOW
             #     return
             # go up
-            if not self.mission.verticalFlightMission(2.5):
+            if not self.mission.verticalFlightMission(3.0):
                 self.get_logger().info("go up fail")
                 self.flow_mode = self.STOP_FLOW
                 return
@@ -199,7 +199,7 @@ class MainFlightNode(Node):
                 self.base_position_config["home"]["x"],
                 self.base_position_config["home"]["y"],
             ]
-            if not self.mission.navigateTo(home_position[0], home_position[1], 2.5):
+            if not self.mission.navigateTo(home_position[0], home_position[1], 3.0):
                 self.get_logger().info("navigateTo fail")
                 self.flow_mode = self.STOP_FLOW
                 return
