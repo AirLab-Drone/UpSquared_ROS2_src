@@ -183,6 +183,7 @@ class MainFlightNode(Node):
                 self.get_logger().info("go down fail")
                 self.flow_mode = self.STOP_FLOW
                 return
+            time.sleep(3) # 等待3秒在丟滅火器
             # # throw extinguisher
             # if not self.mission.throwingExtinguisher():
             #     self.get_logger().info("throw extinguisher fail")
