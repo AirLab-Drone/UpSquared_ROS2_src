@@ -160,11 +160,11 @@ class MainFlightNode(Node):
                 self.get_logger().info("navigateTo fail")
                 self.flow_mode = self.STOP_FLOW
                 return
-            # self.get_logger().info("fire distinguish")
-            # if not self.mission.fireDistinguish():
-            #     self.get_logger().info("fire distinguish fail")
-            #     # self.flow_mode = self.STOP_FLOW
-            #     # return
+            self.get_logger().info("fire distinguish")
+            if not self.mission.fireDistinguish():
+                self.get_logger().info("fire distinguish fail")
+                # self.flow_mode = self.STOP_FLOW
+                # return
             # ----------------------------- throw extinguish ----------------------------- #
             self.get_logger().info("throw extinguisher")
             throwing_position = [
@@ -184,11 +184,11 @@ class MainFlightNode(Node):
                 self.flow_mode = self.STOP_FLOW
                 return
             time.sleep(3) # 等待3秒在丟滅火器
-            # # throw extinguisher
-            # if not self.mission.throwingExtinguisher():
-            #     self.get_logger().info("throw extinguisher fail")
-            #     self.flow_mode = self.STOP_FLOW
-            #     return
+            # throw extinguisher
+            if not self.mission.throwingExtinguisher():
+                self.get_logger().info("throw extinguisher fail")
+                self.flow_mode = self.STOP_FLOW
+                return
             # go up
             if not self.mission.verticalFlightMission(3.0):
                 self.get_logger().info("go up fail")
@@ -215,12 +215,12 @@ class MainFlightNode(Node):
                 self.flow_mode = self.STOP_FLOW
                 return
             #! 不要重複對齊
-            # time.sleep(5)
-            # self.get_logger().info("align drone")
-            # if not self.mission.platformAlignment():
-            #     self.get_logger().info("align drone fail")
-            #     self.flow_mode = self.STOP_FLOW
-            #     return
+            time.sleep(5)
+            self.get_logger().info("align drone")
+            if not self.mission.platformAlignment():
+                self.get_logger().info("align drone fail")
+                self.flow_mode = self.STOP_FLOW
+                return
 
         except Exception as e:
             self.get_logger().info(f"flow1 error: {e}")
@@ -232,7 +232,7 @@ def main():
     if not rclpy.ok():
         rclpy.init()
     flight_node = MainFlightNode()
-    flight_node.flow_mode = flight_node.TEST_FLOW
+    flight_node.flow_mode = flight_node.STOP_FLOW
     rclpy.spin(flight_node)
     flight_node.destroy_node()
     rclpy.shutdown()
