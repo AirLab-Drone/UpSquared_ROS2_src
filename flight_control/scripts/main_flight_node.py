@@ -149,7 +149,7 @@ class MainFlightNode(Node):
                 self.flow_mode = self.STOP_FLOW
                 return
             self.get_logger().info("navigateTo fire")
-            #起飛後先設置平台降落狀態，關閉遮板不等待
+            # 起飛後先設置平台降落狀態，關閉遮板不等待
             if not self.mission.prepareLandingNoWait():
                 self.get_logger().info("prepareLandingNoWait fail")
                 self.flow_mode = self.STOP_FLOW
@@ -183,7 +183,7 @@ class MainFlightNode(Node):
                 self.get_logger().info("go down fail")
                 self.flow_mode = self.STOP_FLOW
                 return
-            time.sleep(3) # 等待3秒在丟滅火器
+            time.sleep(3)  # 等待3秒在丟滅火器
             # throw extinguisher
             if not self.mission.throwingExtinguisher():
                 self.get_logger().info("throw extinguisher fail")
@@ -226,6 +226,47 @@ class MainFlightNode(Node):
             self.get_logger().info(f"flow1 error: {e}")
             self.flow_mode = self.STOP_FLOW
         self.flow_mode = self.STOP_FLOW
+
+    def reloadExtinguisher(self):
+        if not self.mission.loadingExtinguisher():
+            self.get_logger().info("load extinguish fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        self.flow_mode = self.STOP_FLOW
+
+    def landingPlatformFlow(self):
+        self.get_logger().info("prepare landing")
+        if not self.mission.prepareLanding():
+            self.get_logger().info("prepareLanding fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        self.get_logger().info("landedOnPlatform")
+        if not self.mission.landedOnPlatform():
+            self.get_logger().info("landedOnPlatform fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        #! 不要重複對齊
+        time.sleep(5)
+        self.get_logger().info("align drone")
+        if not self.mission.platformAlignment():
+            self.get_logger().info("align drone fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        self.flow_mode = self.STOP_FLOW
+    
+    def autoTakeoffAndManualThrowing(self):
+        self.get_logger().info("prepare takeoff")
+        if not self.mission.prepareTakeoff():
+            self.get_logger().info("prepareTakeoff fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        self.get_logger().info("takeoff")
+        if not self.mission.simpleTakeoff():
+            self.get_logger().info("takeoff fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        self.flow_mode = self.STOP_FLOW
+        
 
 
 def main():
