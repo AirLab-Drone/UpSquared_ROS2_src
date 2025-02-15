@@ -179,7 +179,7 @@ class MainFlightNode(Node):
                 self.flow_mode = self.STOP_FLOW
                 return
             # down to throw extinguisher
-            if not self.mission.verticalFlightMission(1.0):
+            if not self.mission.verticalFlightMission(1.5):
                 self.get_logger().info("go down fail")
                 self.flow_mode = self.STOP_FLOW
                 return
