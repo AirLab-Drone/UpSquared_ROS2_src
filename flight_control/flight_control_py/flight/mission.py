@@ -562,6 +562,7 @@ class Mission:
         # --------------------------------- variable --------------------------------- #
         LIMIT_SEALING_RANGE = self.LIMIT_SEALING_RANGE
         MAX_VERTICAL_SPEED = self.MAX_VERTICAL_SPEED
+        MAX_SPEED = self.MAX_SPEED
         NAV_LOWEST_HEIGHT = self.LOWEST_HEIGHT
 
         # --------------------------------- function --------------------------------- #
@@ -589,9 +590,11 @@ class Mission:
             self.node.get_logger().info("It's not in template mode")
             self.stopMission()
             return False
+        #取得目前點位
+        initial_position = self.flight_info.uwb_coordinate
         while not around(self.flight_info.rangefinder_alt, destination_z):
-            # ----------------------------------- 例外處理 ----------------------------------- #
-            # 設定中斷點，如果不是前往火源模式就直接結束
+            # ----------------------------------- 例外處理 -0, 0, move_z, 0)---------------------------------- #
+            # 設定中斷點，如果不是垂直飛行模式就直接結束
             if self.mode != self.VERTICAL_FLIGHT_MODE:
                 self.stopMission()
                 return False
@@ -601,13 +604,18 @@ class Mission:
                 < LIMIT_SEALING_RANGE + NAV_LOWEST_HEIGHT
             ):
                 self.stopMission()
-                self.node.get_logger().error("not enough space to navigate")
+                self.node.get_logger().error("not enough space to vertical flight")
                 return False
+
+            x_diff = initial_position.y - self.flight_info.uwb_coordinate.y
+            y_diff = -(initial_position.x -self.flight_info.uwb_coordinate.x)
             z_diff = diffZCompute(self.flight_info.rangefinder_alt)
             # 計算移動速度，並且限制最大速度
+            move_x = min(max(x_diff, -MAX_SPEED), MAX_SPEED)
+            move_y = min(max(y_diff, -MAX_SPEED), MAX_SPEED)
             move_z = min(max(z_diff, -MAX_VERTICAL_SPEED), MAX_VERTICAL_SPEED)
             # 送出速度指令
-            self.controller.sendPositionTargetVelocity(0, 0, move_z, 0)
+            self.controller.sendPositionTargetVelocity(move_x, move_y, move_z, 0)
         # ----------------------------------- 結束任務 ----------------------------------- #
         self.stopMission()
         return True
