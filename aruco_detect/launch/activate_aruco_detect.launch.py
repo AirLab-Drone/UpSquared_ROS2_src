@@ -49,7 +49,7 @@ def generate_launch_description():
                 package="aruco_detect",
                 executable="aruco_detector_node.py",
                 output="screen",
-                parameters=[
+                parameters=[ 
                     {"simulation": False},
                     {"aruco_marker_config_file": aruco_markers_file},
                     {"camera_config_file": camera_config_file},
