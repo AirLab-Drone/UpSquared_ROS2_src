@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from flight_control_py.tool.PID import PID
@@ -585,6 +586,31 @@ class Mission:
                 return destination_z - current_high
             return 0
 
+        def world_to_drone(x_w, y_w, x_c, y_c, theta):
+            """
+            將世界座標 (x_w, y_w) 轉換到無人機座標 (x_d, y_d)
+            x_c, y_c: 無人機在世界座標中的位置
+            theta: 無人機的朝向角（弧度，世界座標 Y 軸為基準，順時針為正）
+            世界座標方向:
+                X: 向右(東方)
+                Y: 向前(北方)
+            無人機座標方向:
+                X: 向前(無人機機頭方向)
+                Y: 向左
+            """
+            rotation_matrix = np.array(
+                [[np.sin(theta), np.cos(theta)], [-np.cos(theta), np.sin(theta)]]
+            )
+
+            drone_x, drone_y = rotation_matrix @ (
+                np.array([x_w, y_w]) - np.array([x_c, y_c])
+            )
+            if np.isclose(drone_x, 0.0):
+                drone_x = 0.0
+            if np.isclose(drone_y, 0.0):
+                drone_y = 0.0
+            return drone_x, drone_y
+
         # ----------------------------------- 開始任務 ----------------------------------- #
         if self.mode != self.VERTICAL_FLIGHT_MODE:
             self.node.get_logger().info("It's not in template mode")
@@ -606,26 +632,34 @@ class Mission:
                 self.stopMission()
                 self.node.get_logger().error("not enough space to vertical flight")
                 return False
-            # 當前點為與目標點的差距
-            x_diff = initial_position.x - self.flight_info.uwb_coordinate.x
-            y_diff = initial_position.y - self.flight_info.uwb_coordinate.y
+            # # 當前點為與目標點的差距
+            # x_diff = initial_position.x - self.flight_info.uwb_coordinate.x
+            # y_diff = initial_position.y - self.flight_info.uwb_coordinate.y
             z_diff = diffZCompute(self.flight_info.rangefinder_alt)
-            yaw_diff = math.atan2(y_diff, x_diff) * 180 / math.pi
-            # 計算旋轉角度
-            compass_heading = self.flight_info.compass_heading
-            bcn_orient_yaw = (
-                self.node.get_parameter("bcn_orient_yaw")
-                .get_parameter_value()
-                .double_value
+            # yaw_diff = math.atan2(y_diff, x_diff) * 180 / math.pi
+            # # 計算旋轉角度
+            # compass_heading = self.flight_info.compass_heading
+            # bcn_orient_yaw = (
+            #     self.node.get_parameter("bcn_orient_yaw")
+            #     .get_parameter_value()
+            #     .double_value
+            # )
+            # rotate_deg = (90 - yaw_diff - compass_heading + bcn_orient_yaw) % 360
+            # #  計算移動速度
+            # current_initial_distance = math.sqrt(
+            #     x_diff**2 + y_diff**2
+            # )  # 計算當前與目標的距離
+            # # 計算x, y的移動距離，y因為座標關係需要反向
+            # move_x = current_initial_distance * math.cos(rotate_deg * 3.14 / 180)
+            # move_y = -current_initial_distance * math.sin(rotate_deg * 3.14 / 180)
+            move_x, move_y = world_to_drone(
+                initial_position.x,
+                initial_position.y,
+                self.flight_info.uwb_coordinate.x,
+                self.flight_info.uwb_coordinate.y,
+                np.radians(self.flight_info.compass_heading),
             )
-            rotate_deg = (90 - yaw_diff - compass_heading + bcn_orient_yaw) % 360
-            #  計算移動速度
-            current_initial_distance = math.sqrt(
-                x_diff**2 + y_diff**2
-            )  # 計算當前與目標的距離
-            # 計算x, y的移動距離，y因為座標關係需要反向
-            move_x = current_initial_distance * math.cos(rotate_deg * 3.14 / 180)
-            move_y = -current_initial_distance * math.sin(rotate_deg * 3.14 / 180)
+
             # 並且限制最大速度
             move_x = min(max(move_x, -MAX_SPEED), MAX_SPEED)
             move_y = min(max(move_y, -MAX_SPEED), MAX_SPEED)

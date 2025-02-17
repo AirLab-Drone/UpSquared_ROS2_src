@@ -66,5 +66,13 @@ chmod a+x install_geographiclib_datasets.sh
 ### GPIO
 ```sudo -H pip3 install python-periphery```
 
+# config
+## drone flight
+flight_control/config/apm_config.yaml -> 設定MAVROS連線參數(flight_control/launch/apm.launch)  
+flight_control/config/base_position.yaml -> 設定home點，丟棄點(launch_manager/launch/main_flight.launch.py) 
+## camera
+
+
+
 
 
