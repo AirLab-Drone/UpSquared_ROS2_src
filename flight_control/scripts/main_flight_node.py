@@ -115,8 +115,26 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        if not self.mission.loadingExtinguisher():
-            self.get_logger().info("load extinguish fail")
+        if not self.controller.setMode():
+            self.get_logger().info("setMode fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        time.sleep(4)
+        if not self.mission.simpleTakeoff(3):
+            self.get_logger().info("takeoff fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        if not self.mission.verticalFlightMission(1.5):
+            self.get_logger().info("go down fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        time.sleep(3)
+        if not self.mission.verticalFlightMission(3.0):
+            self.get_logger().info("go up fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        if not self.mission.simpleLanding():
+            self.get_logger().info("landing fail")
             self.flow_mode = self.STOP_FLOW
             return
         self.flow_mode = self.STOP_FLOW
@@ -233,7 +251,7 @@ def main():
     if not rclpy.ok():
         rclpy.init()
     flight_node = MainFlightNode()
-    flight_node.flow_mode = flight_node.STOP_FLOW
+    flight_node.flow_mode = flight_node.TEST_FLOW
     rclpy.spin(flight_node)
     flight_node.destroy_node()
     rclpy.shutdown()

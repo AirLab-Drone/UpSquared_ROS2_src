@@ -590,7 +590,7 @@ class Mission:
             self.node.get_logger().info("It's not in template mode")
             self.stopMission()
             return False
-        #取得目前點位
+        # 取得目前點位
         initial_position = self.flight_info.uwb_coordinate
         while not around(self.flight_info.rangefinder_alt, destination_z):
             # ----------------------------------- 例外處理 -0, 0, move_z, 0)---------------------------------- #
@@ -606,14 +606,33 @@ class Mission:
                 self.stopMission()
                 self.node.get_logger().error("not enough space to vertical flight")
                 return False
-
-            x_diff = initial_position.y - self.flight_info.uwb_coordinate.y
-            y_diff = -(initial_position.x -self.flight_info.uwb_coordinate.x)
+            # 當前點為與目標點的差距
+            x_diff = initial_position.x - self.flight_info.uwb_coordinate.x
+            y_diff = initial_position.y - self.flight_info.uwb_coordinate.y
             z_diff = diffZCompute(self.flight_info.rangefinder_alt)
-            # 計算移動速度，並且限制最大速度
-            move_x = min(max(x_diff, -MAX_SPEED), MAX_SPEED)
-            move_y = min(max(y_diff, -MAX_SPEED), MAX_SPEED)
+            yaw_diff = math.atan2(y_diff, x_diff) * 180 / math.pi
+            # 計算旋轉角度
+            compass_heading = self.flight_info.compass_heading
+            bcn_orient_yaw = (
+                self.node.get_parameter("bcn_orient_yaw")
+                .get_parameter_value()
+                .double_value
+            )
+            rotate_deg = (90 - yaw_diff - compass_heading + bcn_orient_yaw) % 360
+            #  計算移動速度
+            current_initial_distance = math.sqrt(
+                x_diff**2 + y_diff**2
+            )  # 計算當前與目標的距離
+            # 計算x, y的移動距離，y因為座標關係需要反向
+            move_x = current_initial_distance * math.cos(rotate_deg * 3.14 / 180)
+            move_y = -current_initial_distance * math.sin(rotate_deg * 3.14 / 180)
+            # 並且限制最大速度
+            move_x = min(max(move_x, -MAX_SPEED), MAX_SPEED)
+            move_y = min(max(move_y, -MAX_SPEED), MAX_SPEED)
             move_z = min(max(z_diff, -MAX_VERTICAL_SPEED), MAX_VERTICAL_SPEED)
+            self.node.get_logger().info(
+                f"move_x: {move_x}, move_y: {move_y}, move_z: {move_z}"
+            )
             # 送出速度指令
             self.controller.sendPositionTargetVelocity(move_x, move_y, move_z, 0)
         # ----------------------------------- 結束任務 ----------------------------------- #
@@ -814,7 +833,7 @@ class Mission:
         if result is None or not result.success:
             self.stopMission()
             return False
-        
+
         # 移動滅火器位置
         if extinguisher_num == -1 or extinguisher_num == 0:
             extinguisher_num = 1
