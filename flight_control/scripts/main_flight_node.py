@@ -148,16 +148,6 @@ class MainFlightNode(Node):
                 self.get_logger().info("takeoff fail")
                 self.flow_mode = self.STOP_FLOW
                 return
-            # ------------------------------ avoid platform ------------------------------ #
-            self.get_logger().info("avoid platform")
-            avoid_distance = 1.8
-            fire_home_distance = math.sqrt((self.thermal_alert_msg.x - self.base_position_config["home"]["x"])**2 + (self.thermal_alert_msg.y - self.base_position_config["home"]["y"])**2)
-            x_avoid_target = self.base_position_config["home"]["x"] + (self.thermal_alert_msg.x - self.base_position_config["home"]["x"]) * (avoid_distance / fire_home_distance)
-            y_avoid_target = self.base_position_config["home"]["y"] + (self.thermal_alert_msg.y - self.base_position_config["home"]["y"]) * (avoid_distance / fire_home_distance)
-            if not self.mission.navigateTo(x_avoid_target, y_avoid_target, 4.0):
-                self.get_logger().info("navigateTo fail")
-                self.flow_mode = self.STOP_FLOW
-                return
             # -------------------------------- fight fire -------------------------------- #
             self.get_logger().info("navigateTo fire")
             #起飛後先設置平台降落狀態，關閉遮板不等待
