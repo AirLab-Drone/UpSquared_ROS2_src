@@ -48,7 +48,7 @@ class Mission:
     PREPARE_LANDING_NO_WAIT_MODE = 14
 
     # define control parameter
-    LIMIT_SEALING_RANGE = 0.8  # 距離天花板的最小距離
+    LIMIT_SEALING_RANGE = 2  # 距離天花板的最小距離
     LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
     HIGHEST_HEIGHT = 3.0  # 最高高度 單位:公尺
     MAX_SPEED = 0.3  # 速度 單位:公尺/秒
