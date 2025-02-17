@@ -67,12 +67,14 @@ chmod a+x install_geographiclib_datasets.sh
 ```sudo -H pip3 install python-periphery```
 
 # config
+設定檔用途 -> 設定檔的位置（設定檔被引用位置）
 ## drone flight
-flight_control/config/apm_config.yaml -> 設定MAVROS連線參數(flight_control/launch/apm.launch)  
-flight_control/config/base_position.yaml -> 設定home點，丟棄點(launch_manager/launch/main_flight.launch.py) 
+設定MAVROS連線參數 -> flight_control/config/apm_config.yaml (flight_control/launch/apm.launch）  
+設定home點，丟棄點 -> flight_control/config/base_position.yaml (launch_manager/launch/main_flight.launch.py） 
 ## camera
-
-
-
+相機安裝位置與參數 -> aruco_detect/config/VGA_180fps_camera_parameter.yaml (aruco_detect/launch/activate_aruco_detect.launch.py）  
+aruco標籤放置位置 -> src/aruco_detect/config/aruco_markers.yaml（aruco_detect/launch/activate_aruco_detect.launch.py，src/launch_manager/launch/main_flight.launch.py）  
+## thermal camera
+熱相儀安裝位置與參數 -> src/coin417rg2_thermal/config/thermal_camera.yaml（src/coin417rg2_thermal/scripts/thermal_frame_to_drone_frame.py）
 
 

@@ -12,7 +12,7 @@ def launch_setup(context, *args, **kwargs):
     aruco_markers_file = os.path.join(
         get_package_share_directory('aruco_detect'),
         'config',
-        'platform_markers.yaml',
+        'aruco_markers.yaml',
     )
     base_position_file = ""
     
