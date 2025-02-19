@@ -31,6 +31,11 @@ class PlatformCommunicationNode(Node):
             "/platform_communication/perforated_plate",
             self.perforated_plate_callback,
         )
+        self.create_service(
+            PerforatedPlate,
+            "/platform_communication/perforated_plate_no_wait",
+            self.perforated_plate_no_wait_callback,
+        )
         # 料筒移動
         self.create_service(
             MovetoChargeTank,
@@ -83,6 +88,7 @@ class PlatformCommunicationNode(Node):
             self.get_logger().info("connecting...")
             time.sleep(0.5)
         print("connected ^_^\n", self.client)
+
     # ---------------------------------------------------------------------------- #
     #                                   callback                                   #
     # ---------------------------------------------------------------------------- #
@@ -111,8 +117,8 @@ class PlatformCommunicationNode(Node):
                 self.get_logger().error(f"error: {str(e)}")
                 response.success = False
                 break
-        result = self.client.read_coils(self.open_alignment_rod_addr,2)
-        self.get_logger().info(f'result: {result.bits}')
+        result = self.client.read_coils(self.open_alignment_rod_addr, 2)
+        self.get_logger().info(f"result: {result.bits}")
         self.get_logger().info(f"response: {response}")
         if response.success:
             response.success = self.wait_finish()
@@ -124,11 +130,15 @@ class PlatformCommunicationNode(Node):
             response.success = True
             try:
                 if request.open:
-                    result = self.client.write_coil(self.open_perforated_plate_addr, True)
+                    result = self.client.write_coil(
+                        self.open_perforated_plate_addr, True
+                    )
                     if result.isError():
                         response.success = False
                 else:
-                    result = self.client.write_coil(self.close_perforated_plate_addr, True)
+                    result = self.client.write_coil(
+                        self.close_perforated_plate_addr, True
+                    )
                     if result.isError():
                         response.success = False
                 break
@@ -168,7 +178,7 @@ class PlatformCommunicationNode(Node):
         return response
 
     def moveto_extinguisher_callback(self, request, response):
-        if request.num not in [1,2]:
+        if request.num not in [1, 2]:
             self.get_logger().info("out of extinguish range")
             response.success = False
             return response
@@ -177,7 +187,9 @@ class PlatformCommunicationNode(Node):
             self.get_logger().info("moveto extinguisher service is called")
             try:
                 result = self.client.write_coil(
-                    self.moveto_extinguisher_addr + request.num -1, True, unit=self.UNIT
+                    self.moveto_extinguisher_addr + request.num - 1,
+                    True,
+                    unit=self.UNIT,
                 )
                 if result.isError():
                     response.success = False
@@ -259,9 +271,7 @@ class PlatformCommunicationNode(Node):
         for i in range(2):
             response.success = True
             try:
-                result = self.client.read_coils(
-                    self.check_tank_status_addr, 3
-                )
+                result = self.client.read_coils(self.check_tank_status_addr, 3)
                 if result.isError():
                     self.get_logger().error("ModbusIOException")
                     response.success = False
@@ -283,6 +293,38 @@ class PlatformCommunicationNode(Node):
                 response.success = False
                 break
         return response
+
+    # ---------------------------------------------------------------------------- #
+    #                             no waiting callback                             #
+    # ---------------------------------------------------------------------------- #
+    def perforated_plate_no_wait_callback(self, request, response):
+        self.get_logger().info("perforated plate service is called")
+        for i in range(2):
+            response.success = True
+            try:
+                if request.open:
+                    result = self.client.write_coil(
+                        self.open_perforated_plate_addr, True
+                    )
+                    if result.isError():
+                        response.success = False
+                else:
+                    result = self.client.write_coil(
+                        self.close_perforated_plate_addr, True
+                    )
+                    if result.isError():
+                        response.success = False
+                break
+            except ConnectionException as e:
+                self.get_logger().error(f"Connection error: {e}")
+                response.success = False
+            except Exception as e:
+                self.get_logger().error(f"error: {str(e)}")
+                response.success = False
+                break
+        self.get_logger().info(f"response: {response}")
+        return response
+
     # ---------------------------------------------------------------------------- #
     #                                   function                                   #
     # ---------------------------------------------------------------------------- #
@@ -296,13 +338,17 @@ class PlatformCommunicationNode(Node):
         except Exception as e:
             self.get_logger().error(f"error: {str(e)}")
             return False
+
     def wait_finish(self, timeout=20):
         start_time = rclpy.clock.Clock().now()
-        while rclpy.clock.Clock().now() - start_time < rclpy.time.Duration(seconds=timeout):
+        while rclpy.clock.Clock().now() - start_time < rclpy.time.Duration(
+            seconds=timeout
+        ):
             if self.check_finish_status():
+                time.sleep(0.3)
                 return True
             time.sleep(0.1)
-        self.get_logger().info('wait platform status is timeout')
+        self.get_logger().info("wait platform status is timeout")
         return False
 
 
