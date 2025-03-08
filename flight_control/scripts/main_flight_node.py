@@ -115,9 +115,33 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
+        if not self.controller.setMode():
+            self.get_logger().info("setMode fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        time.sleep(4)
         self.get_logger().info("takeoff")
         if not self.mission.simpleTakeoff(target_hight=2.5):
             self.get_logger().info("takeoff fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        self.get_logger().info("navigateTo home")
+        home_position = [
+            self.base_position_config["home"]["x"],
+            self.base_position_config["home"]["y"],
+        ]
+        if not self.mission.navigateTo(home_position[0], home_position[1], 3.0):
+            self.get_logger().info("navigateTo fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        self.get_logger().info("prepare landing")
+        if not self.mission.prepareLanding():
+            self.get_logger().info("prepareLanding fail")
+            self.flow_mode = self.STOP_FLOW
+            return
+        self.get_logger().info("landedOnPlatform")
+        if not self.mission.landedOnPlatform():
+            self.get_logger().info("landedOnPlatform fail")
             self.flow_mode = self.STOP_FLOW
             return
         self.flow_mode = self.STOP_FLOW
