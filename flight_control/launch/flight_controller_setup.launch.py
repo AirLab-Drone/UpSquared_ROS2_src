@@ -15,7 +15,7 @@ from ament_index_python import get_package_share_directory
 
 def changeMavrosPublishRate():
     return TimerAction(
-        period=5.0,
+        period=20.0,
         actions=[
             ExecuteProcess(
                 cmd=[

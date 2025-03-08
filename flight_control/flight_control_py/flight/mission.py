@@ -49,7 +49,7 @@ class Mission:
 
     # define control parameter
     LIMIT_SEALING_RANGE = 2  # 距離天花板的最小距離
-    LOWEST_HEIGHT = 0.6  # 最低可看到aruco的高度 單位:公尺
+    LOWEST_HEIGHT = 0.7  # 最低可看到aruco的高度 單位:公尺
     HIGHEST_HEIGHT = 3.0  # 最高高度 單位:公尺
     MAX_SPEED = 0.3  # 速度 單位:公尺/秒
     MAX_VERTICAL_SPEED = 0.15  # 速度 單位:公尺/秒
@@ -269,11 +269,12 @@ class Mission:
         start_time = rclpy.clock.Clock().now()
         # 等待起飛高度到達目標高度
         while abs(self.flight_info.rangefinder_alt - target_hight) > 0.5:
+            pass
             # print(f"hight offset: {self.flight_info.rangefinder_alt - target_hight}")
-            if rclpy.clock.Clock().now() - start_time > rclpy.time.Duration(seconds=7):
-                self.stopMission()
-                self.node.get_logger().error("takeoff time out")
-                return False
+            # if rclpy.clock.Clock().now() - start_time > rclpy.time.Duration(seconds=7):
+            #     self.stopMission()
+            #     self.node.get_logger().error("takeoff time out")
+            #     return False
         self.mode = self.WAIT_MODE
         self.stopMission()
         return True
@@ -325,7 +326,7 @@ class Mission:
         def init_pid():
             current_time = rclpy.clock.Clock().now().nanoseconds
             current_time = rclpy.clock.Clock().now().nanoseconds
-            pid_move_x = PID(0.6, 0.0006, 0.00083, current_time)
+            pid_move_x = PID(0.7, 0.0006, 0.00083, current_time)
             pid_move_y = PID(0.6, 0.0006, 0.00083, current_time)
             pid_move_z = PID(0.4, 0.0006, 0.00083, current_time, LOWEST_HEIGHT)
             pid_move_yaw = PID(0.6, 0.0006, 0.00083, current_time)
@@ -412,9 +413,9 @@ class Mission:
             # )
             # ------------------ check distance and yaw, whether landing ----------------- #
             if (
-                different_distance < 0.08
-                and marker_z <= LOWEST_HEIGHT * 1.2
-                and (-5 <= marker_yaw <= 5)
+                different_distance < 0.1 # 在0.1m內可降落
+                and marker_z <= LOWEST_HEIGHT * 1.2 # 高度在1.2倍最低高度內可降落
+                and (-5 <= marker_yaw <= 5) # 偏角在5度內可降落
             ):
                 if (
                     rclpy.clock.Clock().now() - last_not_in_range_time

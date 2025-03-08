@@ -115,26 +115,9 @@ class MainFlightNode(Node):
     # ---------------------------------------------------------------------------- #
 
     def testFlow(self):
-        if not self.controller.setMode():
-            self.get_logger().info("setMode fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        time.sleep(4)
-        if not self.mission.simpleTakeoff(3):
+        self.get_logger().info("takeoff")
+        if not self.mission.simpleTakeoff(target_hight=2.5):
             self.get_logger().info("takeoff fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        if not self.mission.verticalFlightMission(1.5):
-            self.get_logger().info("go down fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        time.sleep(3)
-        if not self.mission.verticalFlightMission(3.0):
-            self.get_logger().info("go up fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        if not self.mission.simpleLanding():
-            self.get_logger().info("landing fail")
             self.flow_mode = self.STOP_FLOW
             return
         self.flow_mode = self.STOP_FLOW
@@ -162,7 +145,7 @@ class MainFlightNode(Node):
                 self.flow_mode = self.STOP_FLOW
                 return
             self.get_logger().info("takeoff")
-            if not self.mission.simpleTakeoff():
+            if not self.mission.simpleTakeoff(target_hight=2.5):
                 self.get_logger().info("takeoff fail")
                 self.flow_mode = self.STOP_FLOW
                 return
@@ -177,6 +160,11 @@ class MainFlightNode(Node):
                 self.thermal_alert_msg.x, self.thermal_alert_msg.y, 3.0
             ):
                 self.get_logger().info("navigateTo fail")
+                self.flow_mode = self.STOP_FLOW
+                return
+            self.get_logger().info("go down to fire")
+            if not self.mission.verticalFlightMission(2.5):
+                self.get_logger().info("go down to fire fail")
                 self.flow_mode = self.STOP_FLOW
                 return
             self.get_logger().info("fire distinguish")
@@ -202,7 +190,7 @@ class MainFlightNode(Node):
                 self.get_logger().info("go down fail")
                 self.flow_mode = self.STOP_FLOW
                 return
-            time.sleep(3) # 等待3秒在丟滅火器
+            time.sleep(1) # 等待1秒在丟滅火器
             # throw extinguisher
             if not self.mission.throwingExtinguisher():
                 self.get_logger().info("throw extinguisher fail")
