@@ -105,7 +105,7 @@ class MainFlightNode(Node):
         """
         # self.get_logger().info(f"thermal alert: {msg}")
         # 如果溫度小於60度，則不執行
-        if msg.temperature < 60:
+        if msg.temperature < 50:
             return
         self.thermal_alert_msg = msg
         self.flow_mode = self.FLOW1_FLOW
@@ -125,25 +125,9 @@ class MainFlightNode(Node):
             self.get_logger().info("takeoff fail")
             self.flow_mode = self.STOP_FLOW
             return
-        self.get_logger().info("navigateTo home")
-        home_position = [
-            self.base_position_config["home"]["x"],
-            self.base_position_config["home"]["y"],
-        ]
-        if not self.mission.navigateTo(home_position[0], home_position[1], 3.0):
-            self.get_logger().info("navigateTo fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info("prepare landing")
-        if not self.mission.prepareLanding():
-            self.get_logger().info("prepareLanding fail")
-            self.flow_mode = self.STOP_FLOW
-            return
-        self.get_logger().info("landedOnPlatform")
-        if not self.mission.landedOnPlatform():
-            self.get_logger().info("landedOnPlatform fail")
-            self.flow_mode = self.STOP_FLOW
-            return
+        self.get_logger().info("fire distinguish")
+        if not self.mission.fireDistinguish():
+            self.get_logger().info("fire distinguish fail")
         self.flow_mode = self.STOP_FLOW
 
     def flow1(self):

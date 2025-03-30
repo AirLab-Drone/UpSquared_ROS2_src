@@ -326,7 +326,7 @@ class Mission:
         def init_pid():
             current_time = rclpy.clock.Clock().now().nanoseconds
             current_time = rclpy.clock.Clock().now().nanoseconds
-            pid_move_x = PID(0.7, 0.0006, 0.00083, current_time)
+            pid_move_x = PID(0.9, 0.0006, 0.00083, current_time)
             pid_move_y = PID(0.6, 0.0006, 0.00083, current_time)
             pid_move_z = PID(0.4, 0.0006, 0.00083, current_time, LOWEST_HEIGHT)
             pid_move_yaw = PID(0.6, 0.0006, 0.00083, current_time)
@@ -419,7 +419,7 @@ class Mission:
             ):
                 if (
                     rclpy.clock.Clock().now() - last_not_in_range_time
-                    > rclpy.time.Duration(seconds=3)
+                    > rclpy.time.Duration(seconds=2) #在範圍內2秒後才能降落
                 ):
                     self.controller.setZeroVelocity()
                     print(f"landing high:{marker_z}")
